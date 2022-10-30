@@ -1,0 +1,14 @@
+{
+  "pins" : [
+    {
+      "identity" : "espeak-ng-spm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/djphoenix/espeak-ng-spm.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "c2541397668aff9b6f58cb9deffed447e1698956"
+      }
+    }
+  ],
+  "version" : 2
+}
