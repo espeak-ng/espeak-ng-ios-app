@@ -47,6 +47,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		D003ED16290EBE10004DF9D8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D044C31A290E9063009F93A3 /* VoiceOverLangs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceOverLangs.swift; sourceTree = "<group>"; };
 		D0A26D6F290BF93B00410F91 /* EspeakNg.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EspeakNg.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0A26D72290BF93B00410F91 /* EspeakNgApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EspeakNgApp.swift; sourceTree = "<group>"; };
@@ -115,6 +116,7 @@
 		D0A26D71290BF93B00410F91 /* Application */ = {
 			isa = PBXGroup;
 			children = (
+				D003ED16290EBE10004DF9D8 /* Info.plist */,
 				D0D0E16C290C78DD00F408F3 /* Synth.swift */,
 				D0D0E16E290C795000F408F3 /* Color+sys.swift */,
 				D0D0E199290D5D3A00F408F3 /* AboutScreen.swift */,
@@ -394,6 +396,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Application/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "eSpeak-NG";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -433,6 +436,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Application/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "eSpeak-NG";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
