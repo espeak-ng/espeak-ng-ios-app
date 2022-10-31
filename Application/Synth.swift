@@ -93,8 +93,9 @@ func setupSynth() throws {
   guard let root = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.\(Bundle.app.bundleIdentifier!)") else {
     throw NSError(domain: EspeakErrorDomain, code: Int(ENS_NOT_SUPPORTED.rawValue))
   }
-//  try? FileManager.default.removeItem(at: root.appendingPathComponent("espeak-ng-data"))
-  try EspeakLib.ensureBundleInstalled(inRoot: root)
+  if Bundle.main == Bundle.app {
+    try EspeakLib.ensureBundleInstalled(inRoot: root)
+  }
   espeak_ng_InitializePath(root.path)
   var res: espeak_ng_STATUS
   res = espeak_ng_Initialize(nil)
