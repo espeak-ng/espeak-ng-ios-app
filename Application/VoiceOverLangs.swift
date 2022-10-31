@@ -68,6 +68,7 @@ func _buildMappings(_ langs: [_Voice]) -> [String:Set<String>] {
     guard let langBest = _matchLang(langs, lang) else { return [] }
     let regionsBest = regions.compactMap({ r in _matchLang(langs, r).flatMap({ (r, $0) }) })
     let uniques = Set([langBest.identifier] + regionsBest.map({ $0.1.identifier }))
+    if uniques.count == 1, regionsBest.count == 1, let r = regionsBest.first { return [(r.1, Set([r.0.identifier]))] }
     if uniques.count == 1 { return [(langBest, Set([lang.identifier]))] }
     return [(langBest, Set([lang.identifier]))] + uniques.subtracting([langBest.identifier]).compactMap({ r in
       guard let v = langs.first(where: { $0.identifier == r }) else { return nil }
