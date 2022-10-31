@@ -15,7 +15,7 @@ class MappingContainer {
   let langs: [_Voice]
   let voices: [_Voice]
   let mapping: [String:Set<String>]
-  private init() {
+  init() {
     let enc = JSONDecoder()
     let groupName = "group.\(Bundle.app.bundleIdentifier!)"
     let groupData = UserDefaults(suiteName: groupName)
@@ -24,7 +24,6 @@ class MappingContainer {
     voices = (groupData?.value(forKey: "voices") as? Data).flatMap({ try? enc.decode([_Voice].self, from: $0) }) ?? []
     mapping = (groupData?.value(forKey: "mapping") as? Data).flatMap({ try? enc.decode([String:Array<String>].self, from: $0) })?.mapValues({ Set($0) }) ?? [:]
   }
-  static let shared = MappingContainer()
 }
 
 public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
@@ -148,9 +147,13 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
 
   public override var speechVoices: [AVSpeechSynthesisProviderVoice] {
     get {
-      let container = MappingContainer.shared
+      let container = MappingContainer()
+      NSLog("Enumerating speechVoices")
+      defer { NSLog("speechVoices done") }
       return container.mapping.flatMap({ langId, localeIds -> [AVSpeechSynthesisProviderVoice] in
+        NSLog("processing %@", langId)
         return container.voices.map({ voice in
+          NSLog("processing %@.%@", langId, voice.identifier)
           let v = AVSpeechSynthesisProviderVoice(
             name: voice.name,
             identifier: [
@@ -166,6 +169,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
           default: v.gender = .unspecified
           }
           v.age = Int(voice.age)
+          NSLog("Added %@", v)
           return v
         })
       })
