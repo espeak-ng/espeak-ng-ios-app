@@ -150,7 +150,7 @@ struct ContentView: View {
       VStack {
         VoiceSelector()
         TextInput()
-        ParameterSlider(espeakRATE, title: "Rate", range: espeakRATE_MINIMUM...espeakRATE_MAXIMUM)
+        ParameterSlider(espeakRATE, title: "Rate", range: espeakRATE_MINIMUM...900)
         ParameterSlider(espeakVOLUME, title: "Volume", range: 0...200)
         ParameterSlider(espeakPITCH, title: "Pitch", range: 0...100)
         ParameterSlider(espeakWORDGAP, title: "Word gap", range: 0...500)
