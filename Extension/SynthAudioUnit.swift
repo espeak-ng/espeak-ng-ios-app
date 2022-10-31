@@ -105,6 +105,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
       frames.assign(repeating: 0, count: Int(frameCount))
       let count = min(self.output.count, Int(frameCount))
       frames.assign(from: self.output, count: count)
+      outputAudioBufferList.pointee.mBuffers.mDataByteSize = UInt32(count * MemoryLayout<Float32>.size)
       self.output.removeFirst(count)
       if self.output.isEmpty {
         actionFlags.pointee = .offlineUnitRenderAction_Complete
@@ -144,6 +145,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
 
   public override func cancelSpeechRequest() {
     self.request = nil
+    self.output.removeAll()
     NSLog("Stop synthesizing")
   }
 
