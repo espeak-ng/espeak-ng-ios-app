@@ -34,6 +34,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
   private var request: AVSpeechSynthesisProviderRequest?
   private var format: AVAudioFormat
   private var output: [Float32] = []
+  private static var espeakStarted = false
 
   @objc override init(componentDescription: AudioComponentDescription, options: AudioComponentInstantiationOptions) throws {
     let basicDescription = AudioStreamBasicDescription(
@@ -124,7 +125,10 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
     let full_voice_id = [lang_id, voice_id == emptyVoiceId ? nil : voice_id].compactMap({ $0 }).joined(separator: "+")
     NSLog("Voice: ", full_voice_id);
     do {
-      try setupSynth()
+      if !Self.espeakStarted {
+        try setupSynth()
+        Self.espeakStarted = true
+      }
       var holder = SynthHolder()
       try withUnsafeMutablePointer(to: &holder) { ptr in
         var res: espeak_ng_STATUS
@@ -140,7 +144,6 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
     } catch let e {
       NSLog("Synth error: %@", e as NSError)
     }
-    espeak_ng_Terminate()
   }
 
   public override func cancelSpeechRequest() {
