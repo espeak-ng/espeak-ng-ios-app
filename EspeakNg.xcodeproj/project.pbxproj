@@ -21,6 +21,7 @@
 		D0D0E18E290C79CA00F408F3 /* Synth.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D0D0E174290C79CA00F408F3 /* Synth.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		D0D0E194290C7DD000F408F3 /* Synth.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0D0E16C290C78DD00F408F3 /* Synth.swift */; };
 		D0D0E19A290D5D3A00F408F3 /* AboutScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0D0E199290D5D3A00F408F3 /* AboutScreen.swift */; };
+		D0E59BEA290FBADF00896989 /* InitScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0E59BE9290FBADF00896989 /* InitScreen.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -63,6 +64,7 @@
 		D0D0E18B290C79CA00F408F3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D0D0E193290C7BAB00F408F3 /* Ext.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Ext.entitlements; sourceTree = "<group>"; };
 		D0D0E199290D5D3A00F408F3 /* AboutScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutScreen.swift; sourceTree = "<group>"; };
+		D0E59BE9290FBADF00896989 /* InitScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InitScreen.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -121,6 +123,7 @@
 				D003ED16290EBE10004DF9D8 /* Info.plist */,
 				D0D0E16C290C78DD00F408F3 /* Synth.swift */,
 				D0D0E16E290C795000F408F3 /* Color+sys.swift */,
+				D0E59BE9290FBADF00896989 /* InitScreen.swift */,
 				D0D0E199290D5D3A00F408F3 /* AboutScreen.swift */,
 				D0A26D72290BF93B00410F91 /* EspeakNgApp.swift */,
 				D0A26D74290BF93B00410F91 /* ContentView.swift */,
@@ -245,6 +248,7 @@
 				D0A26D75290BF93B00410F91 /* ContentView.swift in Sources */,
 				D0A26D73290BF93B00410F91 /* EspeakNgApp.swift in Sources */,
 				D0D0E19A290D5D3A00F408F3 /* AboutScreen.swift in Sources */,
+				D0E59BEA290FBADF00896989 /* InitScreen.swift in Sources */,
 				D0D0E16F290C795000F408F3 /* Color+sys.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
