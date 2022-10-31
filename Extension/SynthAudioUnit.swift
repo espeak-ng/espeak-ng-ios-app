@@ -26,6 +26,8 @@ class MappingContainer {
   }
 }
 
+private let emptyVoiceId = "__espeak"
+
 public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
   private var outputBus: AUAudioUnitBus
   private var _outputBusses: AUAudioUnitBusArray!
@@ -118,7 +120,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
     let parts = voice.split(separator: ".")
     let voice_id = parts.last.flatMap({ String($0) })
     let lang_id: String? = parts.prefix(parts.count-1).joined(separator: "/")
-    let full_voice_id = [lang_id, voice_id].compactMap({ $0 }).joined(separator: "+")
+    let full_voice_id = [lang_id, voice_id == emptyVoiceId ? nil : voice_id].compactMap({ $0 }).joined(separator: "+")
     NSLog("Voice: ", full_voice_id);
     do {
       try setupSynth()
@@ -152,7 +154,15 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
       defer { NSLog("speechVoices done") }
       return container.mapping.flatMap({ langId, localeIds -> [AVSpeechSynthesisProviderVoice] in
         NSLog("processing %@", langId)
-        return container.voices.map({ voice in
+        return [AVSpeechSynthesisProviderVoice(
+          name: "ESpeak",
+          identifier: [
+            langId.replacingOccurrences(of: "/", with: "."),
+            emptyVoiceId
+          ].joined(separator: "."),
+          primaryLanguages: Array(localeIds),
+          supportedLanguages: Array(localeIds)
+        )] + container.voices.map({ voice in
           NSLog("processing %@.%@", langId, voice.identifier)
           let v = AVSpeechSynthesisProviderVoice(
             name: voice.name,
