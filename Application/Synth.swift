@@ -8,6 +8,18 @@
 import Foundation
 import libespeak_ng
 
+extension Bundle {
+  static var app: Bundle {
+    var components = main.bundleURL.path.split(separator: "/")
+    var bundle: Bundle?
+    if let index = components.lastIndex(where: { $0.hasSuffix(".app") }) {
+      components.removeLast((components.count - 1) - index)
+      bundle = Bundle(path: components.joined(separator: "/"))
+    }
+    return bundle ?? main
+  }
+}
+
 class SynthHolder {
   var samples: [Int16] = []
   var events: [espeak_EVENT] = []
@@ -78,7 +90,7 @@ extension _Voice: Codable {
 }
 
 func setupSynth() throws {
-  guard let root = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.dj.phoenix.espeak-ng") else {
+  guard let root = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.\(Bundle.app.bundleIdentifier!)") else {
     throw NSError(domain: EspeakErrorDomain, code: Int(ENS_NOT_SUPPORTED.rawValue))
   }
 //  try? FileManager.default.removeItem(at: root.appendingPathComponent("espeak-ng-data"))
