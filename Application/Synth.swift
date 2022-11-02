@@ -9,14 +9,13 @@ import Foundation
 import libespeak_ng
 
 extension Bundle {
-  static var app: Bundle {
-    var components = main.bundleURL.path.split(separator: "/")
-    var bundle: Bundle?
-    if let index = components.lastIndex(where: { $0.hasSuffix(".app") }) {
-      components.removeLast((components.count - 1) - index)
-      bundle = Bundle(path: components.joined(separator: "/"))
-    }
-    return bundle ?? main
+  var appIdentifier: String? {
+    return bundleIdentifier?
+      .components(separatedBy: ".")
+      .reversed()
+      .trimmingPrefix(["synth-ext"])
+      .reversed()
+      .joined(separator: ".")
   }
 }
 
@@ -90,10 +89,10 @@ extension _Voice: Codable {
 }
 
 func setupSynth() throws {
-  guard let root = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.\(Bundle.app.bundleIdentifier!)") else {
+  guard let root = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.\(Bundle.main.appIdentifier!)") else {
     throw NSError(domain: EspeakErrorDomain, code: Int(ENS_NOT_SUPPORTED.rawValue))
   }
-  if Bundle.main.bundleURL == Bundle.app.bundleURL {
+  if Bundle.main.bundleIdentifier == Bundle.main.appIdentifier {
     try EspeakLib.ensureBundleInstalled(inRoot: root)
   }
   espeak_ng_InitializePath(root.path)

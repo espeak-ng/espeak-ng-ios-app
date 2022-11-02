@@ -38,7 +38,7 @@ struct InitScreen: View {
           .onAppear {
             let (langs, voices) = _splitVoices(_buildVoiceList())
             let mapping = _buildMappings(langs)
-            let groupName = "group.\(Bundle.app.bundleIdentifier!)"
+            let groupName = "group.\(Bundle.main.appIdentifier!)"
             let groupData = UserDefaults(suiteName: groupName)
             do {
               let enc = JSONEncoder()
