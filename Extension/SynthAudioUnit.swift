@@ -34,7 +34,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
   private var request: AVSpeechSynthesisProviderRequest?
   private var format: AVAudioFormat
   private var output: [Float32] = []
-  private static var espeakStarted = false
+  private static var espeakVoice = ""
 
   @objc override init(componentDescription: AudioComponentDescription, options: AudioComponentInstantiationOptions) throws {
     let basicDescription = AudioStreamBasicDescription(
@@ -126,15 +126,17 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
     NSLog("Voice: %@", full_voice_id)
     NSLog("Text: %@", text)
     do {
-      if !Self.espeakStarted {
-        try setupSynth()
-        Self.espeakStarted = true
-      }
       var holder = SynthHolder()
       try withUnsafeMutablePointer(to: &holder) { ptr in
+        if Self.espeakVoice.isEmpty {
+          try setupSynth()
+        }
         var res: espeak_ng_STATUS
-        res = espeak_ng_SetVoiceByName(full_voice_id)
-        guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
+        if Self.espeakVoice != full_voice_id {
+          res = espeak_ng_SetVoiceByName(full_voice_id)
+          guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
+          Self.espeakVoice = full_voice_id
+        }
         res = espeak_ng_Synthesize(text, text.count, 0, POS_CHARACTER, 0, UInt32(espeakSSML | espeakCHARS_UTF8), nil, ptr)
         guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
         res = espeak_ng_Synchronize()
