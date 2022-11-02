@@ -41,10 +41,10 @@ func _matchLang(_ langs: [_Voice], _ locale: Locale) -> _Voice? {
 
 func _buildMappings(_ langs: [_Voice]) -> [String:Set<String>] {
   let sysLocales = Locale.availableIdentifiers.map(Locale.init(identifier:))
-  let sysLangs = Set(sysLocales.compactMap({ $0.langCode2 }))
-  let sysLangSet = [String:(Locale,[Locale])](uniqueKeysWithValues: sysLangs.compactMap({ lid in
-    guard let exact = sysLocales.first(where: { $0.identifier == lid }) else { return nil }
-    let compat = sysLocales.filter({ $0.langCode2 == lid }).filter({ $0.identifier != lid })
+  let sysLangs = [String:[Locale]](sysLocales.compactMap({ l in l.langCode2.flatMap({ ($0, [l]) }) }), uniquingKeysWith: { $0 + $1 })
+  let sysLangSet = [String:(Locale,[Locale])](uniqueKeysWithValues: sysLangs.compactMap({ (lid, locales) in
+    guard let exact = locales.first(where: { $0.identifier == lid }) else { return nil }
+    let compat = locales.filter({ $0.identifier != lid })
     return (lid, (exact, compat))
   }))
   let ret = sysLangSet.flatMap({ (id, locales) -> [(_Voice, Set<String>)] in

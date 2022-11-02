@@ -38,16 +38,23 @@ struct InitScreen: View {
             let (langs, voices) = _splitVoices(_buildVoiceList())
             let mapping = _buildMappings(langs)
             let groupName = "group.\(Bundle.main.appIdentifier!)"
-            let groupData = UserDefaults(suiteName: groupName)
             do {
               let enc = JSONEncoder()
-              groupData?.synchronize()
-              groupData?.set(try enc.encode(langs), forKey: "langs")
-              groupData?.set(try enc.encode(voices), forKey: "voices")
-              groupData?.set(try enc.encode(mapping), forKey: "mapping")
+              enc.outputFormatting = .sortedKeys
+              let langsData = try enc.encode(langs)
+              let voiceData = try enc.encode(voices)
+              let mappingData = try enc.encode(mapping)
+
+              let groupData = UserDefaults(suiteName: groupName)
               groupData?.synchronize()
 
-              AVSpeechSynthesisProviderVoice.updateSpeechVoices()
+              if langsData != groupData?.data(forKey: "langs") || voiceData != groupData?.data(forKey: "voices") || mappingData != groupData?.data(forKey: "mapping") {
+                groupData?.set(langsData, forKey: "langs")
+                groupData?.set(voiceData, forKey: "voices")
+                groupData?.set(mappingData, forKey: "mapping")
+                groupData?.synchronize()
+                AVSpeechSynthesisProviderVoice.updateSpeechVoices()
+              }
 
               withAnimation { self.state = .done }
             } catch let e {
