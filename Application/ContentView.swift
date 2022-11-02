@@ -111,6 +111,7 @@ struct ParameterSlider: View {
   let property: espeak_PARAMETER
   let title: String
   let range: ClosedRange<Int32>
+  let defs = UserDefaults.appGroup
   @State var value: Float
   init(_ property: espeak_PARAMETER, title: String, range: ClosedRange<Int32>) {
     self.property = property
@@ -128,6 +129,9 @@ struct ParameterSlider: View {
         onEditingChanged: { _ in do {
           let res = espeak_ng_SetParameter(property, Int32(value), 0)
           guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
+          defs?.synchronize()
+          defs?.set(Int(value), forKey: "espk.\(property.rawValue)")
+          defs?.synchronize()
         } catch let e {
           print(e)
         } },

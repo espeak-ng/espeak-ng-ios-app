@@ -18,7 +18,6 @@ public class AudioUnitFactory: NSObject, AUAudioUnitFactory {
     guard let audioUnit = auAudioUnit as? SynthAudioUnit else {
       fatalError("Failed to create Synth")
     }
-//    audioUnit.setupParameterTree(SynthParameterSpecs.createAUParameterTree())
     self.observation = audioUnit.observe(\.allParameterValues, options: [.new]) { object, change in
       guard let tree = audioUnit.parameterTree else { return }
       for param in tree.allParameters { param.value = param.value }
@@ -27,4 +26,3 @@ public class AudioUnitFactory: NSObject, AUAudioUnitFactory {
   }
 
 }
-

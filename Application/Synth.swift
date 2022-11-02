@@ -19,6 +19,13 @@ extension Bundle {
   }
 }
 
+extension UserDefaults {
+  static var appGroup: Self? {
+    let groupName = "group.\(Bundle.main.appIdentifier!)"
+    return Self.init(suiteName: groupName)
+  }
+}
+
 class SynthHolder {
   var samples: [Int16] = []
   var events: [espeak_EVENT] = []
@@ -103,6 +110,14 @@ func setupSynth() throws {
   guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
   res = espeak_ng_SetVoiceByName(ESPEAKNG_DEFAULT_VOICE)
   guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
+  let groupData = UserDefaults.appGroup
+  groupData?.synchronize()
+  for k in [espeakRATE, espeakVOLUME, espeakPITCH, espeakWORDGAP] {
+    if let val = (groupData?.object(forKey: "espk.\(k.rawValue)")).flatMap({ ($0 as? NSNumber)?.intValue }) {
+      res = espeak_ng_SetParameter(k, Int32(val), 0)
+      guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
+    }
+  }
   espeak_ng_SetPhonemeEvents(1, 0)
   espeak_SetSynthCallback(synthCallback)
 }

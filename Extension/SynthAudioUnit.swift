@@ -17,8 +17,7 @@ class MappingContainer {
   let mapping: [String:Set<String>]
   init() {
     let enc = JSONDecoder()
-    let groupName = "group.\(Bundle.main.appIdentifier!)"
-    let groupData = UserDefaults(suiteName: groupName)
+    let groupData = UserDefaults.appGroup
     groupData?.synchronize()
     langs = (groupData?.value(forKey: "langs") as? Data).flatMap({ try? enc.decode([_Voice].self, from: $0) }) ?? []
     voices = (groupData?.value(forKey: "voices") as? Data).flatMap({ try? enc.decode([_Voice].self, from: $0) }) ?? []

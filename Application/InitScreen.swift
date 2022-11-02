@@ -37,7 +37,6 @@ struct InitScreen: View {
           .onAppear {
             let (langs, voices) = _splitVoices(_buildVoiceList())
             let mapping = _buildMappings(langs)
-            let groupName = "group.\(Bundle.main.appIdentifier!)"
             do {
               let enc = JSONEncoder()
               enc.outputFormatting = .sortedKeys
@@ -45,7 +44,7 @@ struct InitScreen: View {
               let voiceData = try enc.encode(voices)
               let mappingData = try enc.encode(mapping)
 
-              let groupData = UserDefaults(suiteName: groupName)
+              let groupData = UserDefaults.appGroup
               groupData?.synchronize()
 
               if langsData != groupData?.data(forKey: "langs") || voiceData != groupData?.data(forKey: "voices") || mappingData != groupData?.data(forKey: "mapping") {
