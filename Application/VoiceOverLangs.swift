@@ -9,32 +9,16 @@ import SwiftUI
 
 fileprivate extension Locale {
   var langCode2: String? {
-#if os(iOS)
     language.languageCode?.identifier(.alpha2)
-#else
-    languageCode
-#endif
   }
   var langCode3: String? {
-#if os(iOS)
     language.languageCode?.identifier(.alpha3)
-#else
-    languageCode
-#endif
   }
   var idBCP47: String {
-#if os(iOS)
     identifier(.bcp47)
-#else
-    identifier
-#endif
   }
   var regionId: String? {
-#if os(iOS)
     region?.identifier
-#else
-    regionCode
-#endif
   }
 }
 

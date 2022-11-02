@@ -32,7 +32,6 @@ struct InitScreen: View {
             }
           }
       case .extracted:
-  #if os(iOS)
         ProgressView()
         Text("Syncing VoiceOver voices...")
           .onAppear {
@@ -55,9 +54,6 @@ struct InitScreen: View {
               withAnimation { self.state = .error(e) }
             }
           }
-  #else
-        Text(" ").onAppear { withAnimation { self.state = .done } }
-  #endif
       case .done: Text("Done")
       case .error(let e): Text("eSpeak failure: \(String(describing: e))")
       }
