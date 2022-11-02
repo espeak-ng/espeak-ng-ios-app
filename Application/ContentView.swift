@@ -158,12 +158,8 @@ struct ContentView: View {
     }
     .navigationTitle("eSpeak-NG")
     .toolbar {
-//      #if os(iOS)
-//      NavigationLink(destination: { AboutScreen() }, label: { Image(systemName: "info.circle") }).accessibilityLabel("About")
-//      #else
       Button(action: { aboutShown = true }, label: { Image(systemName: "info.circle") }).accessibilityLabel("About")
         .sheet(isPresented: $aboutShown, content: { AboutScreen() })
-//      #endif
     }
     #if os(iOS)
     .scrollDismissesKeyboard(.immediately)
