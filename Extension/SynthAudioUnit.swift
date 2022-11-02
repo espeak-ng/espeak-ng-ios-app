@@ -123,7 +123,8 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
     let voice_id = parts.last.flatMap({ String($0) })
     let lang_id: String? = parts.prefix(parts.count-1).joined(separator: "/")
     let full_voice_id = [lang_id, voice_id == emptyVoiceId ? nil : voice_id].compactMap({ $0 }).joined(separator: "+")
-    NSLog("Voice: ", full_voice_id);
+    NSLog("Voice: %@", full_voice_id)
+    NSLog("Text: %@", text)
     do {
       if !Self.espeakStarted {
         try setupSynth()
