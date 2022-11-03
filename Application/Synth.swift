@@ -191,6 +191,30 @@ fileprivate func _decodeLangs(_ langs: UnsafePointer<CChar>) -> [(UInt8, String)
   return list
 }
 
+private func _formatName(_ name: String) -> String {
+  var formatted = ""
+  var prevSpace = true
+  var prevNumber = false
+  for c in name {
+    if c.isNumber {
+      if !prevNumber {
+        formatted.append(" ")
+      }
+      formatted.append(c)
+    } else if c.isUppercase {
+      if !prevSpace { formatted.append(" ") }
+      formatted.append(c)
+    } else if c.isWhitespace || c == "_" {
+      formatted.append(" ")
+    } else {
+      formatted.append(prevSpace ? c.uppercased() : c.lowercased())
+    }
+    prevNumber = c.isNumber
+    prevSpace = c.isWhitespace || c == "_" || c == "-" || c == "("
+  }
+  return formatted
+}
+
 func _buildVoiceList() -> [_Voice] {
   var sel = espeak_VOICE()
   var voices = espeak_ListVoices(&sel)
@@ -199,7 +223,7 @@ func _buildVoiceList() -> [_Voice] {
     voices = voices?.advanced(by: 1)
     if String(cString: v.identifier).hasPrefix("mb/") { continue }
     list.append(_Voice(
-      name: String(cString: v.name),
+      name: _formatName(String(cString: v.name)),
       identifier: String(cString: v.identifier).replacingOccurrences(of: "!v/", with: ""),
       languages: _decodeLangs(v.languages),
       gender: v.gender,
