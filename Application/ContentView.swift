@@ -9,11 +9,14 @@ import SwiftUI
 import AudioUnit
 import AudioToolbox
 import AVFoundation
+import OSLog
 import libespeak_ng
 
 let engine = AVAudioEngine()
 let playerNode = AVAudioPlayerNode()
 let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 22050, channels: 1, interleaved: true)!
+
+fileprivate let log = Logger(subsystem: "espeak-ng", category: "ui")
 
 func _synth(_ text: String) throws {
   var holder = SynthHolder()
@@ -51,7 +54,7 @@ struct VoiceSelector: View {
     do {
       try setVoice()
     } catch let e {
-      print(e)
+      log.error("\(e, privacy: .public)")
     }
   }
   func setVoice() throws {
@@ -100,7 +103,7 @@ struct TextInput: View {
         do {
           try _synth(synthText)
         } catch let e {
-          print(e)
+          log.error("\(e, privacy: .public)")
         }
       }.accessibilityLabel("Synthesize").buttonStyle(.bordered)
     }
@@ -108,16 +111,16 @@ struct TextInput: View {
 }
 
 struct ParameterSlider: View {
-  let property: espeak_PARAMETER
+  let key: ReferenceWritableKeyPath<UserDefaults, NSNumber?>
+
   let title: String
   let range: ClosedRange<Int32>
-  let defs = UserDefaults.appGroup
   @State var value: Float
-  init(_ property: espeak_PARAMETER, title: String, range: ClosedRange<Int32>) {
-    self.property = property
+  init(_ key: ReferenceWritableKeyPath<UserDefaults, NSNumber?>, title: String, range: ClosedRange<Int32>) {
+    self.key = key
     self.title = title
     self.range = range
-    self.value = Float(espeak_GetParameter(property, 1))
+    self.value = Float(groupData?[keyPath: key]?.int32Value ?? 0)
   }
   var body: some View {
     VStack {
@@ -126,15 +129,9 @@ struct ParameterSlider: View {
         value: $value,
         in: Float(range.lowerBound)...Float(range.upperBound),
         step: 1,
-        onEditingChanged: { _ in do {
-          let res = espeak_ng_SetParameter(property, Int32(value), 0)
-          guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
-          defs?.synchronize()
-          defs?.set(Int(value), forKey: "espk.\(property.rawValue)")
-          defs?.synchronize()
-        } catch let e {
-          print(e)
-        } },
+        onEditingChanged: { _ in
+          groupData?[keyPath: key] = .init(value: Int32(value))
+        },
         minimumValueLabel: Text("\(range.lowerBound)").accessibilityHidden(true),
         maximumValueLabel: Text("\(range.upperBound)").accessibilityHidden(true),
         label: { Text(title) }
@@ -154,10 +151,10 @@ struct ContentView: View {
       VStack {
         VoiceSelector()
         TextInput()
-        ParameterSlider(espeakRATE, title: "Rate", range: espeakRATE_MINIMUM...900)
-        ParameterSlider(espeakVOLUME, title: "Volume", range: 0...200)
-        ParameterSlider(espeakPITCH, title: "Pitch", range: 0...100)
-        ParameterSlider(espeakWORDGAP, title: "Word gap", range: 0...500)
+        ParameterSlider(\.espeakRate, title: "Rate", range: espeakRATE_MINIMUM...900)
+        ParameterSlider(\.espeakVolume, title: "Volume", range: 0...200)
+        ParameterSlider(\.espeakPitch, title: "Pitch", range: 0...100)
+        ParameterSlider(\.espeakWordGap, title: "Word gap", range: 0...500)
       }.padding()
     }
     .navigationTitle("eSpeak-NG")

@@ -13,7 +13,7 @@ import Accelerate
 import libespeak_ng
 import OSLog
 
-private let log = Logger(subsystem: "espeak-ng", category: "SynthAudioUnit")
+fileprivate let log = Logger(subsystem: "espeak-ng", category: "SynthAudioUnit")
 
 class MappingContainer {
   let langs: [_Voice]

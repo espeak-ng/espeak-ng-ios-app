@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import OSLog
 import libespeak_ng
 
 extension Bundle {
@@ -23,6 +24,28 @@ extension UserDefaults {
   static var appGroup: Self? {
     let groupName = "group.\(Bundle.main.appIdentifier!)"
     return Self.init(suiteName: groupName)
+  }
+}
+
+fileprivate let log = Logger(subsystem: "espeak-ng", category: "synth")
+
+let groupData = UserDefaults.appGroup
+extension UserDefaults {
+  @objc dynamic var espeakRate: NSNumber? {
+    get { object(forKey: "espeakRate") as? NSNumber }
+    set { set(newValue, forKey: "espeakRate") ; synchronize() }
+  }
+  @objc dynamic var espeakVolume: NSNumber? {
+    get { object(forKey: "espeakVolume") as? NSNumber }
+    set { set(newValue, forKey: "espeakVolume") ; synchronize() }
+  }
+  @objc dynamic var espeakPitch: NSNumber? {
+    get { object(forKey: "espeakPitch") as? NSNumber }
+    set { set(newValue, forKey: "espeakPitch") ; synchronize() }
+  }
+  @objc dynamic var espeakWordGap: NSNumber? {
+    get { object(forKey: "espeakWordGap") as? NSNumber }
+    set { set(newValue, forKey: "espeakWordGap") ; synchronize() }
   }
 }
 
@@ -95,6 +118,47 @@ extension _Voice: Codable {
   }
 }
 
+private var observers: [NSKeyValueObservation] = []
+func syncSynthOptions() {
+  groupData?.synchronize()
+
+  if groupData?.espeakRate == nil { groupData?.espeakRate = .init(value: espeak_GetParameter(espeakRATE, 1)) }
+  if groupData?.espeakVolume == nil { groupData?.espeakVolume = .init(value: espeak_GetParameter(espeakVOLUME, 1)) }
+  if groupData?.espeakPitch == nil { groupData?.espeakPitch = .init(value: espeak_GetParameter(espeakPITCH, 1)) }
+  if groupData?.espeakWordGap == nil { groupData?.espeakWordGap = .init(value: espeak_GetParameter(espeakWORDGAP, 1)) }
+
+  observers = [
+    groupData?.observe(\.espeakRate, options: [.initial, .new], changeHandler: { _, chg in
+      if let val = chg.newValue??.int32Value {
+        let res = espeak_ng_SetParameter(espeakRATE, val, 0)
+        guard res == ENS_OK else { return log.error("\(NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)))") }
+        log.debug("espeakRate => \(val)")
+      }
+    }),
+    groupData?.observe(\.espeakVolume, options: [.initial, .new], changeHandler: { _, chg in
+      if let val = chg.newValue??.int32Value {
+        let res = espeak_ng_SetParameter(espeakVOLUME, val, 0)
+        guard res == ENS_OK else { return log.error("\(NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)))") }
+        log.debug("espeakVolume => \(val)")
+      }
+    }),
+    groupData?.observe(\.espeakPitch, options: [.initial, .new], changeHandler: { _, chg in
+      if let val = chg.newValue??.int32Value {
+        let res = espeak_ng_SetParameter(espeakPITCH, val, 0)
+        guard res == ENS_OK else { return log.error("\(NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)))") }
+        log.debug("espeakPitch => \(val)")
+      }
+    }),
+    groupData?.observe(\.espeakWordGap, options: [.initial, .new], changeHandler: { _, chg in
+      if let val = chg.newValue??.int32Value {
+        let res = espeak_ng_SetParameter(espeakWORDGAP, val, 0)
+        guard res == ENS_OK else { return log.error("\(NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)))") }
+        log.debug("espeakWordGap => \(val)")
+      }
+    }),
+  ].compactMap({$0})
+}
+
 func setupSynth() throws {
   guard let root = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.\(Bundle.main.appIdentifier!)") else {
     throw NSError(domain: EspeakErrorDomain, code: Int(ENS_NOT_SUPPORTED.rawValue))
@@ -110,14 +174,7 @@ func setupSynth() throws {
   guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
   res = espeak_ng_SetVoiceByName(ESPEAKNG_DEFAULT_VOICE)
   guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
-  let groupData = UserDefaults.appGroup
-  groupData?.synchronize()
-  for k in [espeakRATE, espeakVOLUME, espeakPITCH, espeakWORDGAP] {
-    if let val = (groupData?.object(forKey: "espk.\(k.rawValue)")).flatMap({ ($0 as? NSNumber)?.intValue }) {
-      res = espeak_ng_SetParameter(k, Int32(val), 0)
-      guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
-    }
-  }
+  syncSynthOptions()
   espeak_ng_SetPhonemeEvents(1, 0)
   espeak_SetSynthCallback(synthCallback)
 }
