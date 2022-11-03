@@ -41,6 +41,7 @@ func _synth(_ text: String) throws {
     try engine.start()
   }
 
+  playerNode.stop()
   playerNode.scheduleBuffer(buffer)
   playerNode.prepare(withFrameCount: buffer.frameLength)
   playerNode.play()
