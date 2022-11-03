@@ -9,6 +9,7 @@
 // Swift in this case. It is not recommended to use Swift in other AU types.
 
 import AVFoundation
+import Accelerate
 import libespeak_ng
 import OSLog
 
@@ -36,6 +37,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
   private var request: AVSpeechSynthesisProviderRequest?
   private var format: AVAudioFormat
   private var output: [Float32] = []
+  private var outputOffset: Int = 0
   private static var espeakVoice = ""
 
   @objc override init(componentDescription: AudioComponentDescription, options: AudioComponentInstantiationOptions) throws {
@@ -106,13 +108,21 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
       let unsafeBuffer = UnsafeMutableAudioBufferListPointer(outputAudioBufferList)[0]
       let frames = unsafeBuffer.mData!.assumingMemoryBound(to: Float32.self)
       frames.assign(repeating: 0, count: Int(frameCount))
-      let count = min(self.output.count, Int(frameCount))
-      frames.assign(from: self.output, count: count)
-      outputAudioBufferList.pointee.mBuffers.mDataByteSize = UInt32(count * MemoryLayout<Float32>.size)
-      self.output.removeFirst(count)
-      if self.output.isEmpty {
-        actionFlags.pointee = .offlineUnitRenderAction_Complete
+
+      let count = min(self.output.count - self.outputOffset, Int(frameCount))
+      self.output.withUnsafeBufferPointer { ptr in
+        frames.assign(from: ptr.baseAddress!.advanced(by: self.outputOffset), count: count)
       }
+      outputAudioBufferList.pointee.mBuffers.mDataByteSize = UInt32(count * MemoryLayout<Float32>.size)
+
+      self.outputOffset += count
+      if self.outputOffset >= self.output.count {
+        actionFlags.pointee = .offlineUnitRenderAction_Complete
+        self.request = nil
+        self.output.removeAll()
+        self.outputOffset = 0
+      }
+
       return noErr
     }
   }
@@ -143,7 +153,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
         res = espeak_ng_Synchronize()
         guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
       }
-      self.output = holder.samples.map({ Float32($0) / 32767.0 })
+      self.output = vDSP.multiply(Float(1.0/32767.0), vDSP.integerToFloatingPoint(holder.samples, floatingPointType: Float.self))
       log.info("synth output: \(self.output.count) samples")
     } catch let e {
       log.error("synth error: \(e, privacy: .public)")
