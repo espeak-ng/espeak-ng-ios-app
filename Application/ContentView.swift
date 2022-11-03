@@ -57,7 +57,7 @@ struct VoiceSelector: View {
   func setVoice() throws {
     let name = [
       selectedLang,
-      selectedVoice.replacingOccurrences(of: "!v/", with: ""),
+      selectedVoice,
     ].filter({ !$0.isEmpty }).joined(separator: "+")
     let res = espeak_ng_SetVoiceByName(name)
     guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }

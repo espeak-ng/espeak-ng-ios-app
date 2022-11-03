@@ -143,7 +143,7 @@ func _buildVoiceList() -> [_Voice] {
     if String(cString: v.identifier).hasPrefix("mb/") { continue }
     list.append(_Voice(
       name: String(cString: v.name),
-      identifier: String(cString: v.identifier),
+      identifier: String(cString: v.identifier).replacingOccurrences(of: "!v/", with: ""),
       languages: _decodeLangs(v.languages),
       gender: v.gender,
       age: v.age

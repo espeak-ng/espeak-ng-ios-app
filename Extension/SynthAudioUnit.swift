@@ -10,18 +10,21 @@
 
 import AVFoundation
 import libespeak_ng
+import OSLog
+
+private let log = Logger(subsystem: "espeak-ng", category: "SynthAudioUnit")
 
 class MappingContainer {
   let langs: [_Voice]
   let voices: [_Voice]
-  let mapping: [String:Set<String>]
+  let mapping: [String:Array<String>]
   init() {
     let enc = JSONDecoder()
     let groupData = UserDefaults.appGroup
     groupData?.synchronize()
     langs = (groupData?.value(forKey: "langs") as? Data).flatMap({ try? enc.decode([_Voice].self, from: $0) }) ?? []
     voices = (groupData?.value(forKey: "voices") as? Data).flatMap({ try? enc.decode([_Voice].self, from: $0) }) ?? []
-    mapping = (groupData?.value(forKey: "mapping") as? Data).flatMap({ try? enc.decode([String:Array<String>].self, from: $0) })?.mapValues({ Set($0) }) ?? [:]
+    mapping = (groupData?.value(forKey: "mapping") as? Data).flatMap({ try? enc.decode([String:Array<String>].self, from: $0) }) ?? [:]
   }
 }
 
@@ -122,8 +125,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
     let voice_id = parts.last.flatMap({ String($0) })
     let lang_id: String? = parts.prefix(parts.count-1).joined(separator: "/")
     let full_voice_id = [lang_id, voice_id == emptyVoiceId ? nil : voice_id].compactMap({ $0 }).joined(separator: "+")
-    NSLog("Voice: %@", full_voice_id)
-    NSLog("Text: %@", text)
+    log.info("synth request: \(full_voice_id, privacy: .public) \(text, privacy: .public)")
     do {
       var holder = SynthHolder()
       try withUnsafeMutablePointer(to: &holder) { ptr in
@@ -142,43 +144,38 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
         guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
       }
       self.output = holder.samples.map({ Float32($0) / 32767.0 })
-      NSLog("Output length: %@", NSNumber(value: self.output.count))
+      log.info("synth output: \(self.output.count) samples")
     } catch let e {
-      NSLog("Synth error: %@", e as NSError)
+      log.error("synth error: \(e, privacy: .public)")
     }
   }
 
   public override func cancelSpeechRequest() {
     self.request = nil
     self.output.removeAll()
-    NSLog("Stop synthesizing")
+    log.info("stop synthesizing")
   }
 
   public override var speechVoices: [AVSpeechSynthesisProviderVoice] {
     get {
       let container = MappingContainer()
-      NSLog("Enumerating speechVoices")
-      defer { NSLog("speechVoices done") }
-      return container.mapping.flatMap({ langId, localeIds -> [AVSpeechSynthesisProviderVoice] in
-        NSLog("processing %@", langId)
-        return [AVSpeechSynthesisProviderVoice(
+      log.info("speechVoices begin")
+      var list = [AVSpeechSynthesisProviderVoice]()
+      list.reserveCapacity(container.mapping.count * (container.voices.count + 1))
+      for (langId, localeIds) in container.mapping {
+        let langPath = langId.replacingOccurrences(of: "/", with: ".")
+        list.append(AVSpeechSynthesisProviderVoice(
           name: "ESpeak",
-          identifier: [
-            langId.replacingOccurrences(of: "/", with: "."),
-            emptyVoiceId
-          ].joined(separator: "."),
-          primaryLanguages: Array(localeIds),
-          supportedLanguages: Array(localeIds)
-        )] + container.voices.map({ voice in
-          NSLog("processing %@.%@", langId, voice.identifier)
+          identifier: "\(langPath).\(emptyVoiceId)",
+          primaryLanguages: localeIds,
+          supportedLanguages: localeIds
+        ))
+        for voice in container.voices {
           let v = AVSpeechSynthesisProviderVoice(
             name: voice.name,
-            identifier: [
-              langId.replacingOccurrences(of: "/", with: "."),
-              voice.identifier.replacingOccurrences(of: "!v/", with: "")
-            ].joined(separator: "."),
-            primaryLanguages: Array(localeIds),
-            supportedLanguages: Array(localeIds)
+            identifier: "\(langPath).\(voice.identifier)",
+            primaryLanguages: localeIds,
+            supportedLanguages: localeIds
           )
           switch UInt32(voice.gender) {
           case ENGENDER_MALE.rawValue: v.gender = .male
@@ -186,10 +183,11 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
           default: v.gender = .unspecified
           }
           v.age = Int(voice.age)
-          NSLog("Added %@", v)
-          return v
-        })
-      })
+          list.append(v)
+        }
+      }
+      log.info("speechVoices done: \(list.count)")
+      return list
     }
     set { }
   }
