@@ -34,10 +34,10 @@ private let emptyVoiceId = "__espeak"
 public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
   private var outputBus: AUAudioUnitBus
   private var _outputBusses: AUAudioUnitBusArray!
-  private var request: AVSpeechSynthesisProviderRequest?
   private var format: AVAudioFormat
   private var output: [Float32] = []
   private var outputOffset: Int = 0
+  private var outputMutex = DispatchSemaphore(value: 1)
   private static var espeakVoice = ""
 
   @objc override init(componentDescription: AudioComponentDescription, options: AudioComponentInstantiationOptions) throws {
@@ -66,69 +66,40 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
     try super.allocateRenderResources()
   }
 
-  public func setupParameterTree(_ parameterTree: AUParameterTree) {
-    self.parameterTree = parameterTree
-    for param in parameterTree.allParameters {
-      setParameter(paramAddress: param.address, value: param.value)
+  private func performRender(
+    actionFlags: UnsafeMutablePointer<AudioUnitRenderActionFlags>,
+    timestamp: UnsafePointer<AudioTimeStamp>,
+    frameCount: AUAudioFrameCount,
+    outputBusNumber: Int,
+    outputAudioBufferList: UnsafeMutablePointer<AudioBufferList>,
+    renderEvents: UnsafePointer<AURenderEvent>?,
+    renderPull: AURenderPullInputBlock?
+  ) -> AUAudioUnitStatus {
+    let unsafeBuffer = UnsafeMutableAudioBufferListPointer(outputAudioBufferList)
+    let frames = unsafeBuffer[0].mData!.assumingMemoryBound(to: Float32.self)
+    frames.assign(repeating: 0, count: Int(frameCount))
+
+    self.outputMutex.wait()
+    let count = min(self.output.count - self.outputOffset, Int(frameCount))
+    self.output.withUnsafeBufferPointer { ptr in
+      frames.assign(from: ptr.baseAddress!.advanced(by: self.outputOffset), count: count)
     }
-    setupParameterCallbacks()
+    outputAudioBufferList.pointee.mBuffers.mDataByteSize = UInt32(count * MemoryLayout<Float32>.size)
+
+    self.outputOffset += count
+    if self.outputOffset >= self.output.count {
+      actionFlags.pointee = .offlineUnitRenderAction_Complete
+      self.output.removeAll()
+      self.outputOffset = 0
+    }
+    self.outputMutex.signal()
+
+    return noErr
   }
 
-  private func setupParameterCallbacks() {
-    parameterTree?.implementorValueObserver = { [weak self] param, value -> Void in
-      self?.setParameter(paramAddress: param.address, value: value)
-    }
-    parameterTree?.implementorValueProvider = { [weak self] param in
-      return self!.getParameter(param.address)
-    }
-    parameterTree?.implementorStringFromValueCallback = { param, valuePtr in
-      guard let value = valuePtr?.pointee else { return "-" }
-      return NSString.localizedStringWithFormat("%.f", value) as String
-    }
-  }
-
-  func setParameter(paramAddress: AUParameterAddress, value: AUValue) {
-    switch paramAddress {
-//    case SynthParameterAddress.gain.rawValue:
-//      linearGain = value
-    default: return
-    }
-  }
-
-  func getParameter(_ paramAddress: AUParameterAddress) -> AUValue {
-    switch paramAddress {
-//    case SynthParameterAddress.gain.rawValue:
-//      return linearGain
-    default: return 0.0
-    }
-  }
-
-  public override var internalRenderBlock: AUInternalRenderBlock {
-    return { actionFlags, timestamp, frameCount, outputBusNumber, outputAudioBufferList, _, _ in
-      let unsafeBuffer = UnsafeMutableAudioBufferListPointer(outputAudioBufferList)[0]
-      let frames = unsafeBuffer.mData!.assumingMemoryBound(to: Float32.self)
-      frames.assign(repeating: 0, count: Int(frameCount))
-
-      let count = min(self.output.count - self.outputOffset, Int(frameCount))
-      self.output.withUnsafeBufferPointer { ptr in
-        frames.assign(from: ptr.baseAddress!.advanced(by: self.outputOffset), count: count)
-      }
-      outputAudioBufferList.pointee.mBuffers.mDataByteSize = UInt32(count * MemoryLayout<Float32>.size)
-
-      self.outputOffset += count
-      if self.outputOffset >= self.output.count {
-        actionFlags.pointee = .offlineUnitRenderAction_Complete
-        self.request = nil
-        self.output.removeAll()
-        self.outputOffset = 0
-      }
-
-      return noErr
-    }
-  }
+  public override var internalRenderBlock: AUInternalRenderBlock { self.performRender }
 
   public override func synthesizeSpeechRequest(_ speechRequest: AVSpeechSynthesisProviderRequest) {
-    self.request = speechRequest
     let text = speechRequest.ssmlRepresentation
     let voice = speechRequest.voice.identifier
     let parts = voice.split(separator: ".")
@@ -153,17 +124,23 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
         res = espeak_ng_Synchronize()
         guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
       }
-      self.output = vDSP.multiply(Float(1.0/32767.0), vDSP.integerToFloatingPoint(holder.samples, floatingPointType: Float.self))
+      let resampled = vDSP.multiply(Float(1.0/32767.0), vDSP.integerToFloatingPoint(holder.samples, floatingPointType: Float.self))
+      self.outputMutex.wait()
+      self.output = resampled
+      self.outputOffset = 0
       log.info("synth output: \(self.output.count) samples")
+      self.outputMutex.signal()
     } catch let e {
       log.error("synth error: \(e, privacy: .public)")
     }
   }
 
   public override func cancelSpeechRequest() {
-    self.request = nil
+    self.outputMutex.wait()
     self.output.removeAll()
+    self.outputOffset = 0
     log.info("stop synthesizing")
+    self.outputMutex.signal()
   }
 
   public override var speechVoices: [AVSpeechSynthesisProviderVoice] {
