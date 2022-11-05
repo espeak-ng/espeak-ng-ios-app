@@ -45,13 +45,11 @@ struct InitScreen: View {
               let mappingData = try enc.encode(mapping)
 
               let groupData = UserDefaults.appGroup
-              groupData?.synchronize()
 
               if langsData != groupData?.data(forKey: "langs") || voiceData != groupData?.data(forKey: "voices") || mappingData != groupData?.data(forKey: "mapping") {
                 groupData?.set(langsData, forKey: "langs")
                 groupData?.set(voiceData, forKey: "voices")
                 groupData?.set(mappingData, forKey: "mapping")
-                groupData?.synchronize()
                 AVSpeechSynthesisProviderVoice.updateSpeechVoices()
               }
 

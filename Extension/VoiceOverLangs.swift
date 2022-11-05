@@ -5,24 +5,16 @@
 //  Created by Yury Popov on 30.10.2022.
 //
 
-import SwiftUI
+import Foundation
 
 fileprivate extension Locale {
-  var langCode2: String? {
-    language.languageCode?.identifier(.alpha2)
-  }
-  var langCode3: String? {
-    language.languageCode?.identifier(.alpha3)
-  }
-  var idBCP47: String {
-    identifier(.bcp47)
-  }
-  var regionId: String? {
-    region?.identifier
-  }
+  var langCode2: String? { language.languageCode?.identifier(.alpha2) }
+  var langCode3: String? { language.languageCode?.identifier(.alpha3) }
+  var idBCP47: String { identifier(.bcp47) }
+  var regionId: String? { region?.identifier }
 }
 
-func _matchLang(_ langs: [_Voice], _ locale: Locale) -> _Voice? {
+fileprivate func _matchLang(_ langs: [_Voice], _ locale: Locale) -> _Voice? {
   let lidx = Set<String>([
     locale.idBCP47,
     locale.langCode2,
@@ -30,11 +22,10 @@ func _matchLang(_ langs: [_Voice], _ locale: Locale) -> _Voice? {
     [locale.langCode2, locale.regionId].compactMap({$0}).joined(separator: "-"),
     [locale.langCode3, locale.regionId].compactMap({$0}).joined(separator: "-"),
   ].compactMap({ $0?.lowercased() }))
-//  print(locale.identifier, lidx)
-  let compat = langs.filter({ v in v.languages.contains(where: { lidx.contains($0.1.lowercased()) }) })
+  let compat = langs.filter({ v in v.languages.contains(where: { lidx.contains($0.lang.lowercased()) }) })
   return compat.max(by: { v1, v2 in
-    let p1 = v1.languages.compactMap({ lidx.contains($0.1.lowercased()) ? $0.0 : nil }).max() ?? 0
-    let p2 = v2.languages.compactMap({ lidx.contains($0.1.lowercased()) ? $0.0 : nil }).max() ?? 0
+    let p1 = v1.languages.compactMap({ lidx.contains($0.lang.lowercased()) ? $0.priority : nil }).max() ?? 0
+    let p2 = v2.languages.compactMap({ lidx.contains($0.lang.lowercased()) ? $0.priority : nil }).max() ?? 0
     return p1 < p2
   })
 }

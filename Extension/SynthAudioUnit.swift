@@ -5,9 +5,6 @@
 //  Created by Yury Popov on 28.10.2022.
 //
 
-// NOTE:- An Audio Unit Speech Extension (ausp) is rendered offline, so it is safe to use
-// Swift in this case. It is not recommended to use Swift in other AU types.
-
 import AVFoundation
 import Accelerate
 import libespeak_ng
@@ -15,17 +12,104 @@ import OSLog
 
 fileprivate let log = Logger(subsystem: "espeak-ng", category: "SynthAudioUnit")
 
-class MappingContainer {
-  let langs: [_Voice]
-  let voices: [_Voice]
-  let mapping: [String:Array<String>]
-  init() {
-    let enc = JSONDecoder()
-    let groupData = UserDefaults.appGroup
-    groupData?.synchronize()
-    langs = (groupData?.value(forKey: "langs") as? Data).flatMap({ try? enc.decode([_Voice].self, from: $0) }) ?? []
-    voices = (groupData?.value(forKey: "voices") as? Data).flatMap({ try? enc.decode([_Voice].self, from: $0) }) ?? []
-    mapping = (groupData?.value(forKey: "mapping") as? Data).flatMap({ try? enc.decode([String:Array<String>].self, from: $0) }) ?? [:]
+enum EspeakParameter: AUParameterAddress {
+  case rate, volume, pitch, wordGap
+  case langId, voiceId, langName, voiceName
+}
+
+fileprivate class SynthHolder {
+  var samples: [Int16] = []
+  var events: [espeak_EVENT] = []
+}
+
+fileprivate func synthCallback(samples: UnsafeMutablePointer<Int16>?, num_samples: Int32, events: UnsafeMutablePointer<espeak_EVENT>?) -> Int32 {
+  let holder = events?.pointee.user_data.assumingMemoryBound(to: SynthHolder.self).pointee
+  let buf = UnsafeBufferPointer(start: samples, count: Int(num_samples))
+  holder?.samples.append(contentsOf: buf)
+  log.trace("samples: count=\(num_samples, privacy: .public) max=\(buf.reduce(0, { max($0, abs($1)) }), privacy: .public)")
+  var evt = events
+  while let e = evt?.pointee, e.type != espeakEVENT_LIST_TERMINATED {
+    holder?.events.append(e)
+    evt = evt?.advanced(by: 1)
+    switch e.type {
+    case espeakEVENT_SAMPLERATE:
+      log.trace("samplerate: \(e.id.number, privacy: .public)")
+    case espeakEVENT_SENTENCE:
+      log.trace("sentence: \(e.id.number, privacy: .public) (smp=\(e.sample, privacy: .public))")
+    case espeakEVENT_WORD:
+      log.trace("word: \(e.id.number, privacy: .public) (smp=\(e.sample, privacy: .public))")
+    case espeakEVENT_PHONEME:
+      log.trace("phoneme: '\(withUnsafeBytes(of: e.id.string, { String(cString: $0.bindMemory(to: CChar.self).baseAddress!) }), privacy: .private(mask: .hash))' (smp=\(e.sample, privacy: .public))")
+    case espeakEVENT_END:
+      log.trace("end: (smp=\(e.sample, privacy: .public))")
+    default:
+      log.trace("event: \(e.type.rawValue, privacy: .public)")
+    }
+  }
+  return 0
+}
+
+let groupData = UserDefaults.standard
+class EspeakContainer {
+  @JSONUserDefaults<[_Voice]>(storage: groupData, key: \.espeakLangs)
+  var langs
+  @JSONUserDefaults<[_Voice]>(storage: groupData, key: \.espeakVoices)
+  var voices
+  @JSONUserDefaults<[String:[String]]>(storage: groupData, key: \.espeakMappings)
+  var mappings
+
+  private init() {
+    do {
+      let sp = OSSignposter(logger: log)
+      try sp.withIntervalSignpost("espeak_bundle") {
+        let root = try FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        try EspeakLib.ensureBundleInstalled(inRoot: root)
+        espeak_ng_InitializePath(root.path)
+      }
+      try sp.withIntervalSignpost("espeak_init") {
+        var res: espeak_ng_STATUS
+        res = espeak_ng_Initialize(nil)
+        guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
+        res = espeak_ng_InitializeOutput(ENOUTPUT_MODE_SYNCHRONOUS, 0, nil)
+        guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
+        espeak_ng_SetPhonemeEvents(1, 0)
+        espeak_SetSynthCallback(synthCallback)
+      }
+      try sp.withIntervalSignpost("espeak_params") {
+        var res: espeak_ng_STATUS
+        res = groupData.espeakRate.flatMap({ espeak_ng_SetParameter(espeakRATE, $0.int32Value, 0) }) ?? ENS_OK
+        guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
+        res = groupData.espeakVolume.flatMap({ espeak_ng_SetParameter(espeakVOLUME, $0.int32Value, 0) }) ?? ENS_OK
+        guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
+        res = groupData.espeakPitch.flatMap({ espeak_ng_SetParameter(espeakPITCH, $0.int32Value, 0) }) ?? ENS_OK
+        guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
+        res = groupData.espeakWordGap.flatMap({ espeak_ng_SetParameter(espeakWORDGAP, $0.int32Value, 0) }) ?? ENS_OK
+        guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
+      }
+      var updateMappings: Bool = false
+      sp.withIntervalSignpost("buildVoiceList") {
+        let new = espeakVoiceList()
+        if langs != new.langs { langs = new.langs ; updateMappings = true }
+        if voices != new.voices { voices = new.voices ; updateMappings = true }
+        log.info("Langs: \(self.langs ?? [], privacy: .public)")
+        log.info("Voices: \(self.voices ?? [], privacy: .public)")
+      }
+      sp.withIntervalSignpost("buildMappings") {
+        if updateMappings || self.mappings?.isEmpty != false {
+          mappings = _buildMappings(langs ?? []).mapValues(Array.init)
+        }
+        log.info("Mappings: \(self.mappings ?? [:], privacy: .public)")
+      }
+      log.info("Synced Langs: \(self.langs ?? [], privacy: .public)")
+      log.info("Synced Voices: \(self.voices ?? [], privacy: .public)")
+    } catch let e {
+      log.error("\(e, privacy: .public)")
+    }
+  }
+  static private let _single = EspeakContainer()
+  static var single: EspeakContainer {
+    if Thread.isMainThread { return _single }
+    return DispatchQueue.main.sync { return _single }
   }
 }
 
@@ -33,6 +117,7 @@ private let emptyVoiceId = "__espeak"
 
 public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
   private var outputBus: AUAudioUnitBus
+  private var parameterObserver: NSKeyValueObservation!
   private var _outputBusses: AUAudioUnitBusArray!
   private var format: AVAudioFormat
   private var output: [Float32] = []
@@ -56,6 +141,126 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
     outputBus = try AUAudioUnitBus(format: self.format)
     try super.init(componentDescription: componentDescription, options: options)
     _outputBusses = AUAudioUnitBusArray(audioUnit: self, busType: AUAudioUnitBusType.output, busses: [outputBus])
+
+    let container = EspeakContainer.single
+    let langs = container.langs ?? []
+    let voices = container.voices ?? []
+
+    self.parameterTree = .createTree(withChildren: [
+      AUParameterTree.createGroup(
+        withIdentifier: "espeak",
+        name: "eSpeak-NG",
+        children: [
+          AUParameterTree.createParameter(
+            withIdentifier: "rate",
+            name: "Rate",
+            address: EspeakParameter.rate.rawValue,
+            min: AUValue(espeakRATE_MINIMUM), max: 900, unit: .BPM,
+            unitName: "words per minute",
+            valueStrings: nil,
+            dependentParameters: nil
+          ),
+          AUParameterTree.createParameter(
+            withIdentifier: "volume",
+            name: "Volume",
+            address: EspeakParameter.volume.rawValue,
+            min: 0, max: 200, unit: .percent,
+            unitName: nil,
+            valueStrings: nil,
+            dependentParameters: nil
+          ),
+          AUParameterTree.createParameter(
+            withIdentifier: "pitch",
+            name: "Pitch",
+            address: EspeakParameter.pitch.rawValue,
+            min: 0, max: 100, unit: .percent,
+            unitName: nil,
+            valueStrings: nil,
+            dependentParameters: nil
+          ),
+          AUParameterTree.createParameter(
+            withIdentifier: "wordGap",
+            name: "Word gap",
+            address: EspeakParameter.wordGap.rawValue,
+            min: 0, max: 500, unit: .milliseconds,
+            unitName: nil,
+            valueStrings: nil,
+            dependentParameters: nil
+          ),
+          AUParameterTree.createParameter(
+            withIdentifier: "langId",
+            name: "",
+            address: EspeakParameter.langId.rawValue,
+            min: 0, max: .init(langs.count), unit: .indexed, unitName: nil,
+            valueStrings: langs.map({ $0.identifier }),
+            dependentParameters: nil
+          ),
+          AUParameterTree.createParameter(
+            withIdentifier: "langName",
+            name: "",
+            address: EspeakParameter.langName.rawValue,
+            min: 0, max: .init(langs.count), unit: .indexed, unitName: nil,
+            valueStrings: langs.map({ $0.name }),
+            dependentParameters: nil
+          ),
+          AUParameterTree.createParameter(
+            withIdentifier: "voiceId",
+            name: "",
+            address: EspeakParameter.voiceId.rawValue,
+            min: 0, max: .init(voices.count), unit: .indexed, unitName: nil,
+            valueStrings: voices.map({ $0.identifier }),
+            dependentParameters: nil
+          ),
+          AUParameterTree.createParameter(
+            withIdentifier: "voiceName",
+            name: "",
+            address: EspeakParameter.voiceName.rawValue,
+            min: 0, max: .init(voices.count), unit: .indexed, unitName: nil,
+            valueStrings: voices.map({ $0.name }),
+            dependentParameters: nil
+          ),
+        ]
+      )
+    ])
+    self.parameterTree?.implementorValueProvider = { param in
+      switch param.address {
+      case EspeakParameter.rate.rawValue: return AUValue(espeak_GetParameter(espeakRATE, 1))
+      case EspeakParameter.volume.rawValue: return AUValue(espeak_GetParameter(espeakVOLUME, 1))
+      case EspeakParameter.pitch.rawValue: return AUValue(espeak_GetParameter(espeakPITCH, 1))
+      case EspeakParameter.wordGap.rawValue: return AUValue(espeak_GetParameter(espeakWORDGAP, 1))
+      default:
+        log.warning("\(param, privacy: .public) => ???")
+        return 0
+      }
+    }
+    self.parameterTree?.implementorValueObserver = { param, value in
+      var res: espeak_ng_STATUS
+      switch param.address {
+      case EspeakParameter.rate.rawValue:
+        res = espeak_ng_SetParameter(espeakRATE, Int32(value), 0)
+        guard res == ENS_OK else { log.error("espeak_ng_SetParameter: \(res.rawValue, privacy: .public)") ; break }
+        groupData.espeakRate = .init(value: Int32(value))
+      case EspeakParameter.volume.rawValue:
+        res = espeak_ng_SetParameter(espeakVOLUME, Int32(value), 0)
+        guard res == ENS_OK else { log.error("espeak_ng_SetParameter: \(res.rawValue, privacy: .public)") ; break }
+        groupData.espeakVolume = .init(value: Int32(value))
+      case EspeakParameter.pitch.rawValue:
+        res = espeak_ng_SetParameter(espeakPITCH, Int32(value), 0)
+        guard res == ENS_OK else { log.error("espeak_ng_SetParameter: \(res.rawValue, privacy: .public)") ; break }
+        groupData.espeakPitch = .init(value: Int32(value))
+      case EspeakParameter.wordGap.rawValue:
+        res = espeak_ng_SetParameter(espeakWORDGAP, Int32(value), 0)
+        guard res == ENS_OK else { log.error("espeak_ng_SetParameter: \(res.rawValue, privacy: .public)") ; break }
+        groupData.espeakWordGap = .init(value: Int32(value))
+      default:
+        log.warning("\(param, privacy: .public) => \(value, privacy: .public)")
+      }
+    }
+    for p in self.parameterTree?.allParameters ?? [] {
+      if p.unit != .indexed {
+        p.value = self.parameterTree?.implementorValueProvider(p) ?? 0
+      }
+    }
   }
 
   public override var outputBusses: AUAudioUnitBusArray {
@@ -110,9 +315,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
     do {
       var holder = SynthHolder()
       try withUnsafeMutablePointer(to: &holder) { ptr in
-        if Self.espeakVoice.isEmpty {
-          try setupSynth()
-        }
+        _ = EspeakContainer.single
         var res: espeak_ng_STATUS
         if Self.espeakVoice != full_voice_id {
           res = espeak_ng_SetVoiceByName(full_voice_id)
@@ -145,11 +348,11 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
 
   public override var speechVoices: [AVSpeechSynthesisProviderVoice] {
     get {
-      let container = MappingContainer()
+      let container = EspeakContainer.single
       log.info("speechVoices begin")
       var list = [AVSpeechSynthesisProviderVoice]()
-      list.reserveCapacity(container.mapping.count * (container.voices.count + 1))
-      for (langId, localeIds) in container.mapping {
+      list.reserveCapacity((container.mappings?.count ?? 0) * ((container.voices?.count ?? 0) + 1))
+      for (langId, localeIds) in container.mappings ?? [:] {
         let langPath = langId.replacingOccurrences(of: "/", with: ".")
         list.append(AVSpeechSynthesisProviderVoice(
           name: "ESpeak",
@@ -157,7 +360,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
           primaryLanguages: localeIds,
           supportedLanguages: localeIds
         ))
-        for voice in container.voices {
+        for voice in container.voices ?? [] {
           let v = AVSpeechSynthesisProviderVoice(
             name: voice.name,
             identifier: "\(langPath).\(voice.identifier)",

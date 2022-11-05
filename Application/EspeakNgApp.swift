@@ -6,23 +6,22 @@
 //
 
 import SwiftUI
+import Combine
 
 @main
 struct EspeakNgApp: App {
-  @State var espeakState: EspeakState = .setup
+  @ObservedObject var audioUnit = ManagedAudioUnit()
   var body: some Scene {
     WindowGroup {
-      if case .done = espeakState {
-        #if os(iOS)
-        NavigationView { ContentView() }
-        #else
-        ContentView()
-        #endif
-      } else {
-        InitScreen(state: $espeakState)
-        #if !os(iOS)
-          .frame(minWidth: 640, minHeight: 480)
-        #endif
+      switch audioUnit.state {
+      case .none: EmptyView()
+      case .failure(let e): Text("Error loading: \(e.localizedDescription)")
+      case .success(let au):
+#if os(iOS)
+        NavigationView { ContentView(audioUnit: au) }
+#else
+        ContentView(audioUnit: au)
+#endif
       }
     }
   }

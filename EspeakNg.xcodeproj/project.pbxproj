@@ -7,21 +7,20 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		D003ED28290EC70D004DF9D8 /* espeak-ng-data in Frameworks */ = {isa = PBXBuildFile; productRef = D003ED27290EC70D004DF9D8 /* espeak-ng-data */; };
-		D003ED2A290EC70D004DF9D8 /* libespeak-ng in Frameworks */ = {isa = PBXBuildFile; productRef = D003ED29290EC70D004DF9D8 /* libespeak-ng */; };
 		D003ED2C290EC712004DF9D8 /* libespeak-ng in Frameworks */ = {isa = PBXBuildFile; productRef = D003ED2B290EC712004DF9D8 /* libespeak-ng */; };
-		D044C31B290E9063009F93A3 /* VoiceOverLangs.swift in Sources */ = {isa = PBXBuildFile; fileRef = D044C31A290E9063009F93A3 /* VoiceOverLangs.swift */; };
 		D0A26D73290BF93B00410F91 /* EspeakNgApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0A26D72290BF93B00410F91 /* EspeakNgApp.swift */; };
 		D0A26D75290BF93B00410F91 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0A26D74290BF93B00410F91 /* ContentView.swift */; };
 		D0A26D77290BF93E00410F91 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D0A26D76290BF93E00410F91 /* Assets.xcassets */; };
-		D0D0E16D290C78DD00F408F3 /* Synth.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0D0E16C290C78DD00F408F3 /* Synth.swift */; };
+		D0CFEDC22916672700955B1F /* espeak-ng-data in Frameworks */ = {isa = PBXBuildFile; productRef = D0CFEDC12916672700955B1F /* espeak-ng-data */; };
+		D0CFEDC5291667DD00955B1F /* SharedData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0CFEDC3291667C900955B1F /* SharedData.swift */; };
+		D0CFEDC629166C1D00955B1F /* VoiceOverLangs.swift in Sources */ = {isa = PBXBuildFile; fileRef = D044C31A290E9063009F93A3 /* VoiceOverLangs.swift */; };
+		D0CFEDC82916BB1900955B1F /* ManagedAudioUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0CFEDC72916BB1900955B1F /* ManagedAudioUnit.swift */; };
 		D0D0E16F290C795000F408F3 /* Color+sys.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0D0E16E290C795000F408F3 /* Color+sys.swift */; };
 		D0D0E184290C79CA00F408F3 /* SynthAudioUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0D0E183290C79CA00F408F3 /* SynthAudioUnit.swift */; };
 		D0D0E18A290C79CA00F408F3 /* AudioUnitFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0D0E189290C79CA00F408F3 /* AudioUnitFactory.swift */; };
 		D0D0E18E290C79CA00F408F3 /* Synth.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D0D0E174290C79CA00F408F3 /* Synth.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		D0D0E194290C7DD000F408F3 /* Synth.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0D0E16C290C78DD00F408F3 /* Synth.swift */; };
+		D0D0E194290C7DD000F408F3 /* Voices.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0D0E16C290C78DD00F408F3 /* Voices.swift */; };
 		D0D0E19A290D5D3A00F408F3 /* AboutScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0D0E199290D5D3A00F408F3 /* AboutScreen.swift */; };
-		D0E59BEA290FBADF00896989 /* InitScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0E59BE9290FBADF00896989 /* InitScreen.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,7 +55,9 @@
 		D0A26D74290BF93B00410F91 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		D0A26D76290BF93E00410F91 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D0A26D78290BF93E00410F91 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
-		D0D0E16C290C78DD00F408F3 /* Synth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Synth.swift; sourceTree = "<group>"; };
+		D0CFEDC3291667C900955B1F /* SharedData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedData.swift; sourceTree = "<group>"; };
+		D0CFEDC72916BB1900955B1F /* ManagedAudioUnit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManagedAudioUnit.swift; sourceTree = "<group>"; };
+		D0D0E16C290C78DD00F408F3 /* Voices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Voices.swift; sourceTree = "<group>"; };
 		D0D0E16E290C795000F408F3 /* Color+sys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+sys.swift"; sourceTree = "<group>"; };
 		D0D0E174290C79CA00F408F3 /* Synth.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = Synth.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0D0E183290C79CA00F408F3 /* SynthAudioUnit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynthAudioUnit.swift; sourceTree = "<group>"; };
@@ -64,23 +65,14 @@
 		D0D0E18B290C79CA00F408F3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D0D0E193290C7BAB00F408F3 /* Ext.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Ext.entitlements; sourceTree = "<group>"; };
 		D0D0E199290D5D3A00F408F3 /* AboutScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutScreen.swift; sourceTree = "<group>"; };
-		D0E59BE9290FBADF00896989 /* InitScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InitScreen.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		D0A26D6C290BF93B00410F91 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				D003ED2A290EC70D004DF9D8 /* libespeak-ng in Frameworks */,
-				D003ED28290EC70D004DF9D8 /* espeak-ng-data in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		D0D0E171290C79CA00F408F3 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D0CFEDC22916672700955B1F /* espeak-ng-data in Frameworks */,
 				D003ED2C290EC712004DF9D8 /* libespeak-ng in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -121,13 +113,11 @@
 			isa = PBXGroup;
 			children = (
 				D003ED16290EBE10004DF9D8 /* Info.plist */,
-				D0D0E16C290C78DD00F408F3 /* Synth.swift */,
 				D0D0E16E290C795000F408F3 /* Color+sys.swift */,
-				D0E59BE9290FBADF00896989 /* InitScreen.swift */,
 				D0D0E199290D5D3A00F408F3 /* AboutScreen.swift */,
+				D0CFEDC72916BB1900955B1F /* ManagedAudioUnit.swift */,
 				D0A26D72290BF93B00410F91 /* EspeakNgApp.swift */,
 				D0A26D74290BF93B00410F91 /* ContentView.swift */,
-				D044C31A290E9063009F93A3 /* VoiceOverLangs.swift */,
 			);
 			path = Application;
 			sourceTree = "<group>";
@@ -136,6 +126,9 @@
 			isa = PBXGroup;
 			children = (
 				D0D0E18B290C79CA00F408F3 /* Info.plist */,
+				D0D0E16C290C78DD00F408F3 /* Voices.swift */,
+				D0CFEDC3291667C900955B1F /* SharedData.swift */,
+				D044C31A290E9063009F93A3 /* VoiceOverLangs.swift */,
 				D0D0E189290C79CA00F408F3 /* AudioUnitFactory.swift */,
 				D0D0E183290C79CA00F408F3 /* SynthAudioUnit.swift */,
 			);
@@ -150,7 +143,6 @@
 			buildConfigurationList = D0A26D7E290BF93E00410F91 /* Build configuration list for PBXNativeTarget "EspeakNg" */;
 			buildPhases = (
 				D0A26D6B290BF93B00410F91 /* Sources */,
-				D0A26D6C290BF93B00410F91 /* Frameworks */,
 				D0A26D6D290BF93B00410F91 /* Resources */,
 				D0D0E192290C79CA00F408F3 /* Embed Foundation Extensions */,
 			);
@@ -161,8 +153,6 @@
 			);
 			name = EspeakNg;
 			packageProductDependencies = (
-				D003ED27290EC70D004DF9D8 /* espeak-ng-data */,
-				D003ED29290EC70D004DF9D8 /* libespeak-ng */,
 			);
 			productName = EspeakNg;
 			productReference = D0A26D6F290BF93B00410F91 /* EspeakNg.app */;
@@ -182,6 +172,7 @@
 			name = Synth;
 			packageProductDependencies = (
 				D003ED2B290EC712004DF9D8 /* libespeak-ng */,
+				D0CFEDC12916672700955B1F /* espeak-ng-data */,
 			);
 			productName = Synth;
 			productReference = D0D0E174290C79CA00F408F3 /* Synth.appex */;
@@ -195,7 +186,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1410;
-				LastUpgradeCheck = 1400;
+				LastUpgradeCheck = 1410;
 				TargetAttributes = {
 					D0A26D6E290BF93B00410F91 = {
 						CreatedOnToolsVersion = 14.0.1;
@@ -243,13 +234,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D044C31B290E9063009F93A3 /* VoiceOverLangs.swift in Sources */,
-				D0D0E16D290C78DD00F408F3 /* Synth.swift in Sources */,
 				D0A26D75290BF93B00410F91 /* ContentView.swift in Sources */,
 				D0A26D73290BF93B00410F91 /* EspeakNgApp.swift in Sources */,
 				D0D0E19A290D5D3A00F408F3 /* AboutScreen.swift in Sources */,
-				D0E59BEA290FBADF00896989 /* InitScreen.swift in Sources */,
 				D0D0E16F290C795000F408F3 /* Color+sys.swift in Sources */,
+				D0CFEDC82916BB1900955B1F /* ManagedAudioUnit.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -257,8 +246,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D0D0E194290C7DD000F408F3 /* Synth.swift in Sources */,
+				D0CFEDC5291667DD00955B1F /* SharedData.swift in Sources */,
+				D0D0E194290C7DD000F408F3 /* Voices.swift in Sources */,
 				D0D0E18A290C79CA00F408F3 /* AudioUnitFactory.swift in Sources */,
+				D0CFEDC629166C1D00955B1F /* VoiceOverLangs.swift in Sources */,
 				D0D0E184290C79CA00F408F3 /* SynthAudioUnit.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -306,12 +297,15 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				COPY_PHASE_STRIP = NO;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = TSEM76CEN7;
+				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -370,12 +364,15 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				COPY_PHASE_STRIP = NO;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = TSEM76CEN7;
+				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -403,7 +400,6 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Project/App.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Application/Info.plist;
@@ -441,7 +437,6 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Project/App.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Application/Info.plist;
@@ -476,7 +471,6 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Project/Ext.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Extension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Synth;
@@ -499,7 +493,6 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Project/Ext.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Extension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Synth;
@@ -562,20 +555,15 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		D003ED27290EC70D004DF9D8 /* espeak-ng-data */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = D003ED21290EC704004DF9D8 /* XCRemoteSwiftPackageReference "espeak-ng-spm" */;
-			productName = "espeak-ng-data";
-		};
-		D003ED29290EC70D004DF9D8 /* libespeak-ng */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = D003ED21290EC704004DF9D8 /* XCRemoteSwiftPackageReference "espeak-ng-spm" */;
-			productName = "libespeak-ng";
-		};
 		D003ED2B290EC712004DF9D8 /* libespeak-ng */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = D003ED21290EC704004DF9D8 /* XCRemoteSwiftPackageReference "espeak-ng-spm" */;
 			productName = "libespeak-ng";
+		};
+		D0CFEDC12916672700955B1F /* espeak-ng-data */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D003ED21290EC704004DF9D8 /* XCRemoteSwiftPackageReference "espeak-ng-spm" */;
+			productName = "espeak-ng-data";
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
