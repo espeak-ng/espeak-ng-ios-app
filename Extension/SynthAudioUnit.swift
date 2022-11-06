@@ -71,6 +71,7 @@ class EspeakContainer {
   static let documentsDirectory = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
   @JSONFileBacked<[_Voice]>(storage: documentsDirectory.appending(component: "langs.json")) var langs
   @JSONFileBacked<[_Voice]>(storage: documentsDirectory.appending(component: "voices.json")) var voices
+  @JSONFileBacked<[String]>(storage: documentsDirectory.appending(component: "exposed.json")) var exposedLocales
   @JSONFileBacked<Settings>(storage: documentsDirectory.appending(component: "settings.json"), create: Settings.init) private var settings
 
   var rate: Int32? { get { settings?.rate } set { settings?.rate = newValue } }
@@ -102,6 +103,7 @@ class EspeakContainer {
         let new = espeakVoiceList()
         if langs != new.langs { langs = new.langs }
         if voices != new.voices { voices = new.voices }
+        if exposedLocales == nil { exposedLocales = defaultLanguages.filter({ matchLang(new.langs, $0) != nil }).map({ $0.universalId }) }
         log.info("Langs: \(self.langs ?? [], privacy: .public)")
         log.info("Voices: \(self.voices ?? [], privacy: .public)")
       }
@@ -146,8 +148,6 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
     _outputBusses = AUAudioUnitBusArray(audioUnit: self, busType: AUAudioUnitBusType.output, busses: [outputBus])
 
     let container = EspeakContainer.single
-    let langs = container.langs ?? []
-    let voices = container.voices ?? []
 
     self.parameterTree = .createTree(withChildren: [
       AUParameterTree.createGroup(
@@ -334,6 +334,12 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
           resp["langNames"] = langs.map({ $0.name })
           resp["voiceIds"] = voices.map({ $0.identifier })
           resp["voiceNames"] = voices.map({ $0.name })
+          resp["voiceOverLocales"] = systemLanguages.flatMap({ $0.value }).filter({ matchLang(langs, $0) != nil }).map({ $0.universalId })
+          resp["exposedLocales"] = container.exposedLocales ?? []
+        }
+        if let expose = message["expose"] as? [String] {
+          container.exposedLocales = Set(expose).sorted()
+          resp["exposedLocales"] = container.exposedLocales ?? []
         }
         return resp
       }
@@ -348,9 +354,10 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
       var list = [AVSpeechSynthesisProviderVoice]()
       let voices = container.voices ?? []
       let langs = container.langs ?? []
-      list.reserveCapacity(systemLanguages.count * (voices.count + 1))
+      let exposed = container.exposedLocales ?? []
+      log.info("exposed: \(exposed, privacy: .public)")
       for (_, langVariants) in systemLanguages {
-        for langVar in langVariants {
+        for langVar in langVariants.filter({ exposed.contains($0.universalId) }) {
           guard let _ = matchLang(langs, langVar) else { continue }
           let langId = langVar.universalId
           let langPath = "auto.\(langId.lowercased())"

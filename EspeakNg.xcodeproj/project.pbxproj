@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		D003ED2C290EC712004DF9D8 /* libespeak-ng in Frameworks */ = {isa = PBXBuildFile; productRef = D003ED2B290EC712004DF9D8 /* libespeak-ng */; };
 		D00FBF592917A5C000C11D9A /* SelectionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00FBF582917A5C000C11D9A /* SelectionScreen.swift */; };
+		D00FBF5B2917B66100C11D9A /* VoiceOverLangSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00FBF5A2917B66100C11D9A /* VoiceOverLangSelector.swift */; };
 		D0A26D73290BF93B00410F91 /* EspeakNgApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0A26D72290BF93B00410F91 /* EspeakNgApp.swift */; };
 		D0A26D75290BF93B00410F91 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0A26D74290BF93B00410F91 /* ContentView.swift */; };
 		D0A26D77290BF93E00410F91 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D0A26D76290BF93E00410F91 /* Assets.xcassets */; };
@@ -51,6 +52,7 @@
 /* Begin PBXFileReference section */
 		D003ED16290EBE10004DF9D8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D00FBF582917A5C000C11D9A /* SelectionScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionScreen.swift; sourceTree = "<group>"; };
+		D00FBF5A2917B66100C11D9A /* VoiceOverLangSelector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceOverLangSelector.swift; sourceTree = "<group>"; };
 		D044C31A290E9063009F93A3 /* VoiceOverLangs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceOverLangs.swift; sourceTree = "<group>"; };
 		D0A26D6F290BF93B00410F91 /* EspeakNg.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EspeakNg.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0A26D72290BF93B00410F91 /* EspeakNgApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EspeakNgApp.swift; sourceTree = "<group>"; };
@@ -121,6 +123,7 @@
 				D0A26D72290BF93B00410F91 /* EspeakNgApp.swift */,
 				D0A26D74290BF93B00410F91 /* ContentView.swift */,
 				D00FBF582917A5C000C11D9A /* SelectionScreen.swift */,
+				D00FBF5A2917B66100C11D9A /* VoiceOverLangSelector.swift */,
 			);
 			path = Application;
 			sourceTree = "<group>";
@@ -237,6 +240,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D00FBF5B2917B66100C11D9A /* VoiceOverLangSelector.swift in Sources */,
 				D0A26D75290BF93B00410F91 /* ContentView.swift in Sources */,
 				D0A26D73290BF93B00410F91 /* EspeakNgApp.swift in Sources */,
 				D00FBF592917A5C000C11D9A /* SelectionScreen.swift in Sources */,

@@ -108,6 +108,8 @@ struct ContentView: View {
   @State var synthText: String = "Hello"
   @State var langId: String = "gmw/en-US"
   @State var voiceId: String = ""
+  @State var voiceOverLocales = Set<String>()
+  @State var exposedLocales = Set<String>()
   init(audioUnit: AVAudioUnit) {
     self.audioUnit = audioUnit
     self.auChannel = audioUnit.auAudioUnit.messageChannel(for: "espeakData")
@@ -116,6 +118,9 @@ struct ContentView: View {
     let langNames = (res?["langNames"] as? [String]) ?? []
     let voiceIds = (res?["voiceIds"] as? [String]) ?? []
     let voiceNames = (res?["voiceNames"] as? [String]) ?? []
+
+    self.voiceOverLocales = Set(res?["voiceOverLocales"] as? [String] ?? [])
+    self.exposedLocales = Set(res?["exposedLocales"] as? [String] ?? [])
     self.langs = zip(langIds, langNames).map({ (id: $0.0, name: $0.1) })
     self.voices = zip(voiceIds, voiceNames).map({ (id: $0.0, name: $0.1) })
 
@@ -143,8 +148,19 @@ struct ContentView: View {
         ForEach(audioUnit.auAudioUnit.parameterTree?.allParameters.filter({ $0.unit != .indexed }) ?? [], id: \.address, content: ParameterSlider.init)
       }.padding()
     }
+    .onChange(of: exposedLocales, perform: { newValue in
+      _ = self.auChannel.callAudioUnit?(["expose":newValue.sorted()])
+      AVSpeechSynthesisProviderVoice.updateSpeechVoices()
+    })
     .navigationTitle("eSpeak-NG")
     .toolbar {
+      NavigationLink(destination: {
+        VoiceOverLangSelector(
+          selectedLangs: $exposedLocales,
+          voiceOverLocales: voiceOverLocales
+        )
+      }, label: { Image(systemName: "rectangle.3.group.bubble.left") })
+        .accessibilityLabel("VoiceOver languages")
       NavigationLink(destination: { AboutScreen() }, label: { Image(systemName: "info.circle") })
         .accessibilityLabel("About")
     }

@@ -19,12 +19,13 @@ extension Locale.Language {
       region?.identifier
     ].compactMap({$0}).joined(separator: "-")
   }
+  var universal: Self { return .init(identifier: universalId) }
 }
 
 fileprivate let allSystemLanguageVariangs = Set(
   (Locale.Language.systemLanguages + Locale.availableIdentifiers.map({ Locale(identifier: $0).language }))
     .flatMap({ [$0] + $0.parents })
-    .map({ Locale.Language(identifier: $0.universalId) })
+    .map({ $0.universal })
 )
 
 let systemLanguages = [String:Set<Locale.Language>](
@@ -32,6 +33,9 @@ let systemLanguages = [String:Set<Locale.Language>](
     .compactMap({ l in (l.languageCode?.identifier(.alpha2)).flatMap({ ($0, Set([l])) }) }),
   uniquingKeysWith: { $0.union($1) }
 )
+
+let defaultLanguages = Set(Locale.preferredLanguages.map({Locale(identifier:$0).language.universal}))
+  .union([Locale.Language(identifier: "en-US").universal])
 
 func matchLang(_ langs: [_Voice], _ locale: Locale.Language) -> _Voice? {
   let lidx = Set<String>([
