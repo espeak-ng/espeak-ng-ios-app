@@ -13,15 +13,15 @@ struct EspeakNgApp: App {
   @ObservedObject var audioUnit = ManagedAudioUnit()
   var body: some Scene {
     WindowGroup {
-      switch audioUnit.state {
-      case .none: EmptyView()
-      case .failure(let e): Text("Error loading: \(e.localizedDescription)")
-      case .success(let au):
-#if os(iOS)
-        NavigationView { ContentView(audioUnit: au) }
-#else
-        ContentView(audioUnit: au)
-#endif
+      NavigationStack {
+        switch audioUnit.state {
+        case .none: HStack(spacing: 8) {
+          ProgressView()
+          Text("Starting eSpeak engine...")
+        }.padding()
+        case .failure(let e): Text("Error loading: \(e.localizedDescription)")
+        case .success(let au): ContentView(audioUnit: au)
+        }
       }
     }
   }

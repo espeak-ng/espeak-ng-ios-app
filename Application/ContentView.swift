@@ -107,7 +107,6 @@ struct ContentView: View {
   @State var synthText: String = "Hello"
   @State var langId: String = "gmw/en-US"
   @State var voiceId: String = ""
-  @State var aboutShown: Bool = false
   init(audioUnit: AVAudioUnit) {
     self.audioUnit = audioUnit
     let params = audioUnit.auAudioUnit.parameterTree?.allParameters ?? []
@@ -144,8 +143,8 @@ struct ContentView: View {
     }
     .navigationTitle("eSpeak-NG")
     .toolbar {
-      Button(action: { aboutShown = true }, label: { Image(systemName: "info.circle") }).accessibilityLabel("About")
-        .sheet(isPresented: $aboutShown, content: { AboutScreen() })
+      NavigationLink(destination: { AboutScreen() }, label: { Image(systemName: "info.circle") })
+        .accessibilityLabel("About")
     }
     #if os(iOS)
     .scrollDismissesKeyboard(.immediately)
