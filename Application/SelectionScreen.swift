@@ -24,6 +24,7 @@ struct SelectionScreen<Element, I: Hashable & Equatable, V: View>: View {
           Image(systemName: "checkmark")
             .tint(.accentColor)
             .opacity(isSelected(item[keyPath: id]) ? 1 : 0)
+            .accessibilityHidden(!isSelected(item[keyPath: id]))
         }
       }.tint(.primary)
     }

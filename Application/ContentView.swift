@@ -60,6 +60,7 @@ struct TextInput: View {
         .textFieldStyle(.roundedBorder).frame(maxWidth: .infinity)
       Button("eSpeak!") { block(synthText) }
         .accessibilityLabel("Synthesize")
+        .accessibilityAddTraits(.playsSound)
         .buttonStyle(.bordered)
     }
   }
@@ -85,7 +86,7 @@ struct ParameterSlider: View {
         minimumValueLabel: Text("\(Int32(parameter.minValue))").accessibilityHidden(true),
         maximumValueLabel: Text("\(Int32(parameter.maxValue))").accessibilityHidden(true),
         label: { Text(parameter.displayName) }
-      ).accessibilityHint("\(parameter.minValue) to \(parameter.maxValue)")
+      ).accessibilityHint("\(Int32(parameter.minValue)) to \(Int32(parameter.maxValue))")
     }
     .padding()
     .background(
