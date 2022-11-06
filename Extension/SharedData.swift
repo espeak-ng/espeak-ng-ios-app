@@ -10,6 +10,16 @@ import OSLog
 
 fileprivate let log = Logger(subsystem: "espeak-ng", category: "data")
 
+@propertyWrapper struct UserDefaultsField<V> {
+  let storage: UserDefaults
+  let key: ReferenceWritableKeyPath<UserDefaults, V?>
+
+  var wrappedValue: V? {
+    get { return storage[keyPath: key] }
+    set { storage[keyPath: key] = newValue }
+  }
+}
+
 @propertyWrapper struct JSONUserDefaults<T: Codable> {
   let storage: UserDefaults
   let key: ReferenceWritableKeyPath<UserDefaults, Data?>

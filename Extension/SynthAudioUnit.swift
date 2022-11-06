@@ -51,10 +51,12 @@ fileprivate func synthCallback(samples: UnsafeMutablePointer<Int16>?, num_sample
 
 let groupData = UserDefaults.standard
 class EspeakContainer {
-  @JSONUserDefaults<[_Voice]>(storage: groupData, key: \.espeakLangs)
-  var langs
-  @JSONUserDefaults<[_Voice]>(storage: groupData, key: \.espeakVoices)
-  var voices
+  @JSONUserDefaults<[_Voice]>(storage: groupData, key: \.espeakLangs) var langs
+  @JSONUserDefaults<[_Voice]>(storage: groupData, key: \.espeakVoices) var voices
+  @UserDefaultsField<NSNumber>(storage: groupData, key: \.espeakRate) var rate
+  @UserDefaultsField<NSNumber>(storage: groupData, key: \.espeakVolume) var volume
+  @UserDefaultsField<NSNumber>(storage: groupData, key: \.espeakPitch) var pitch
+  @UserDefaultsField<NSNumber>(storage: groupData, key: \.espeakWordGap) var wordGap
 
   private init() {
     do {
@@ -75,13 +77,13 @@ class EspeakContainer {
       }
       try sp.withIntervalSignpost("espeak_params") {
         var res: espeak_ng_STATUS
-        res = groupData.espeakRate.flatMap({ espeak_ng_SetParameter(espeakRATE, $0.int32Value, 0) }) ?? ENS_OK
+        res = rate.flatMap({ espeak_ng_SetParameter(espeakRATE, $0.int32Value, 0) }) ?? ENS_OK
         guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
-        res = groupData.espeakVolume.flatMap({ espeak_ng_SetParameter(espeakVOLUME, $0.int32Value, 0) }) ?? ENS_OK
+        res = volume.flatMap({ espeak_ng_SetParameter(espeakVOLUME, $0.int32Value, 0) }) ?? ENS_OK
         guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
-        res = groupData.espeakPitch.flatMap({ espeak_ng_SetParameter(espeakPITCH, $0.int32Value, 0) }) ?? ENS_OK
+        res = pitch.flatMap({ espeak_ng_SetParameter(espeakPITCH, $0.int32Value, 0) }) ?? ENS_OK
         guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
-        res = groupData.espeakWordGap.flatMap({ espeak_ng_SetParameter(espeakWORDGAP, $0.int32Value, 0) }) ?? ENS_OK
+        res = wordGap.flatMap({ espeak_ng_SetParameter(espeakWORDGAP, $0.int32Value, 0) }) ?? ENS_OK
         guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
       }
       sp.withIntervalSignpost("buildVoiceList") {
@@ -228,19 +230,19 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
       case EspeakParameter.rate.rawValue:
         res = espeak_ng_SetParameter(espeakRATE, Int32(value), 0)
         guard res == ENS_OK else { log.error("espeak_ng_SetParameter: \(res.rawValue, privacy: .public)") ; break }
-        groupData.espeakRate = .init(value: Int32(value))
+        container.rate = .init(value: Int32(value))
       case EspeakParameter.volume.rawValue:
         res = espeak_ng_SetParameter(espeakVOLUME, Int32(value), 0)
         guard res == ENS_OK else { log.error("espeak_ng_SetParameter: \(res.rawValue, privacy: .public)") ; break }
-        groupData.espeakVolume = .init(value: Int32(value))
+        container.volume = .init(value: Int32(value))
       case EspeakParameter.pitch.rawValue:
         res = espeak_ng_SetParameter(espeakPITCH, Int32(value), 0)
         guard res == ENS_OK else { log.error("espeak_ng_SetParameter: \(res.rawValue, privacy: .public)") ; break }
-        groupData.espeakPitch = .init(value: Int32(value))
+        container.pitch = .init(value: Int32(value))
       case EspeakParameter.wordGap.rawValue:
         res = espeak_ng_SetParameter(espeakWORDGAP, Int32(value), 0)
         guard res == ENS_OK else { log.error("espeak_ng_SetParameter: \(res.rawValue, privacy: .public)") ; break }
-        groupData.espeakWordGap = .init(value: Int32(value))
+        container.wordGap = .init(value: Int32(value))
       default:
         log.warning("\(param, privacy: .public) => \(value, privacy: .public)")
       }
