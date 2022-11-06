@@ -17,6 +17,19 @@ enum EspeakParameter: AUParameterAddress {
   case langId, voiceId, langName, voiceName
 }
 
+extension espeak_ng_STATUS {
+  func check() throws {
+    guard self == ENS_OK else {
+      var stringBuffer = [CChar](repeating: 0, count: 512)
+      let str = stringBuffer.withUnsafeMutableBufferPointer { buf in
+        espeak_ng_GetStatusCodeMessage(self, buf.baseAddress!, buf.count)
+        return String(cString: buf.baseAddress!)
+      }
+      throw NSError(domain: EspeakErrorDomain, code: Int(self.rawValue), userInfo: [ NSLocalizedFailureReasonErrorKey: str ])
+    }
+  }
+}
+
 fileprivate class SynthHolder {
   var samples: [Int16] = []
   var events: [espeak_EVENT] = []
@@ -67,24 +80,16 @@ class EspeakContainer {
         espeak_ng_InitializePath(root.path)
       }
       try sp.withIntervalSignpost("espeak_init") {
-        var res: espeak_ng_STATUS
-        res = espeak_ng_Initialize(nil)
-        guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
-        res = espeak_ng_InitializeOutput(ENOUTPUT_MODE_SYNCHRONOUS, 0, nil)
-        guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
-        espeak_ng_SetPhonemeEvents(1, 0)
+        try espeak_ng_Initialize(nil).check()
+        try espeak_ng_InitializeOutput(ENOUTPUT_MODE_SYNCHRONOUS, 0, nil).check()
+        try espeak_ng_SetPhonemeEvents(1, 0).check()
         espeak_SetSynthCallback(synthCallback)
       }
       try sp.withIntervalSignpost("espeak_params") {
-        var res: espeak_ng_STATUS
-        res = rate.flatMap({ espeak_ng_SetParameter(espeakRATE, $0.int32Value, 0) }) ?? ENS_OK
-        guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
-        res = volume.flatMap({ espeak_ng_SetParameter(espeakVOLUME, $0.int32Value, 0) }) ?? ENS_OK
-        guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
-        res = pitch.flatMap({ espeak_ng_SetParameter(espeakPITCH, $0.int32Value, 0) }) ?? ENS_OK
-        guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
-        res = wordGap.flatMap({ espeak_ng_SetParameter(espeakWORDGAP, $0.int32Value, 0) }) ?? ENS_OK
-        guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
+        try rate.flatMap({ try espeak_ng_SetParameter(espeakRATE, $0.int32Value, 0).check() })
+        try volume.flatMap({ try espeak_ng_SetParameter(espeakVOLUME, $0.int32Value, 0).check() })
+        try pitch.flatMap({ try espeak_ng_SetParameter(espeakPITCH, $0.int32Value, 0).check() })
+        try wordGap.flatMap({ try espeak_ng_SetParameter(espeakWORDGAP, $0.int32Value, 0).check() })
       }
       sp.withIntervalSignpost("buildVoiceList") {
         let new = espeakVoiceList()
@@ -225,26 +230,25 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
       }
     }
     self.parameterTree?.implementorValueObserver = { param, value in
-      var res: espeak_ng_STATUS
-      switch param.address {
-      case EspeakParameter.rate.rawValue:
-        res = espeak_ng_SetParameter(espeakRATE, Int32(value), 0)
-        guard res == ENS_OK else { log.error("espeak_ng_SetParameter: \(res.rawValue, privacy: .public)") ; break }
-        container.rate = .init(value: Int32(value))
-      case EspeakParameter.volume.rawValue:
-        res = espeak_ng_SetParameter(espeakVOLUME, Int32(value), 0)
-        guard res == ENS_OK else { log.error("espeak_ng_SetParameter: \(res.rawValue, privacy: .public)") ; break }
-        container.volume = .init(value: Int32(value))
-      case EspeakParameter.pitch.rawValue:
-        res = espeak_ng_SetParameter(espeakPITCH, Int32(value), 0)
-        guard res == ENS_OK else { log.error("espeak_ng_SetParameter: \(res.rawValue, privacy: .public)") ; break }
-        container.pitch = .init(value: Int32(value))
-      case EspeakParameter.wordGap.rawValue:
-        res = espeak_ng_SetParameter(espeakWORDGAP, Int32(value), 0)
-        guard res == ENS_OK else { log.error("espeak_ng_SetParameter: \(res.rawValue, privacy: .public)") ; break }
-        container.wordGap = .init(value: Int32(value))
-      default:
-        log.warning("\(param, privacy: .public) => \(value, privacy: .public)")
+      do {
+        switch param.address {
+        case EspeakParameter.rate.rawValue:
+          try espeak_ng_SetParameter(espeakRATE, Int32(value), 0).check()
+          container.rate = .init(value: Int32(value))
+        case EspeakParameter.volume.rawValue:
+          try espeak_ng_SetParameter(espeakVOLUME, Int32(value), 0).check()
+          container.volume = .init(value: Int32(value))
+        case EspeakParameter.pitch.rawValue:
+          try espeak_ng_SetParameter(espeakPITCH, Int32(value), 0).check()
+          container.pitch = .init(value: Int32(value))
+        case EspeakParameter.wordGap.rawValue:
+          try espeak_ng_SetParameter(espeakWORDGAP, Int32(value), 0).check()
+          container.wordGap = .init(value: Int32(value))
+        default:
+          log.warning("\(param, privacy: .public) => \(value, privacy: .public)")
+        }
+      } catch let e {
+        log.error("espeak_ng_SetParameter: \(e, privacy: .public)")
       }
     }
     for p in self.parameterTree?.allParameters ?? [] {
@@ -316,16 +320,12 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
     do {
       var holder = SynthHolder()
       try withUnsafeMutablePointer(to: &holder) { ptr in
-        var res: espeak_ng_STATUS
         if Self.espeakVoice != full_voice_id {
-          res = espeak_ng_SetVoiceByName(full_voice_id)
-          guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
+          try espeak_ng_SetVoiceByName(full_voice_id).check()
           Self.espeakVoice = full_voice_id
         }
-        res = espeak_ng_Synthesize(text, text.count, 0, POS_CHARACTER, 0, UInt32(espeakSSML | espeakCHARS_UTF8), nil, ptr)
-        guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
-        res = espeak_ng_Synchronize()
-        guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
+        try espeak_ng_Synthesize(text, text.count, 0, POS_CHARACTER, 0, UInt32(espeakSSML | espeakCHARS_UTF8), nil, ptr).check()
+        try espeak_ng_Synchronize().check()
       }
       let resampled = vDSP.multiply(Float(1.0/32767.0), vDSP.integerToFloatingPoint(holder.samples, floatingPointType: Float.self))
       self.outputMutex.wait()
