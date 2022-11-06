@@ -26,25 +26,24 @@ struct VoiceSelector: View {
 
   var body: some View {
     HStack {
-      Menu {
-        ForEach(langs, id: \.id) { l in
-          Button(action: { selectedLang = l.id }, label: { Text(l.name) })
-        }
-      } label: {
+      NavigationLink(destination: {
+        SingleSelectionScreen(data: langs, id: \.id, selection: $selectedLang) {
+          Text($0.name)
+        }.navigationTitle("Language")
+      }, label: {
         Text(langs.first(where: { $0.id == selectedLang })?.name ?? "- None -")
           .frame(maxWidth: .infinity)
-      }.buttonStyle(.bordered).accessibilityLabel("Language selector").accessibilityValue(
+      }).buttonStyle(.bordered).accessibilityLabel("Language selector").accessibilityValue(
         Text(langs.first(where: { $0.id == selectedLang })?.name ?? "None")
       )
-      Menu {
-        Button(action: { selectedVoice = "" }, label: { Text("- None -") })
-        ForEach(voices, id: \.id) { l in
-          Button(action: { selectedVoice = l.id }, label: { Text(l.name) })
-        }
-      } label: {
+      NavigationLink(destination: {
+        SingleSelectionScreen(data: [(id: "", name: "- None -")] + voices, id: \.id, selection: $selectedVoice) {
+          Text($0.name).accessibilityLabel($0.id.isEmpty ? "None" : $0.name)
+        }.navigationTitle("Voice")
+      }, label: {
         Text(voices.first(where: { $0.id == selectedVoice })?.name ?? "- None -")
           .frame(maxWidth: .infinity)
-      }.buttonStyle(.bordered).accessibilityLabel("Voice selector").accessibilityValue(
+      }).buttonStyle(.bordered).accessibilityLabel("Voice selector").accessibilityValue(
         Text(voices.first(where: { $0.id == selectedVoice })?.name ?? "None")
       )
     }.frame(maxWidth: .infinity)
