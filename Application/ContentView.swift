@@ -102,6 +102,7 @@ class _Dummy {
 
 struct ContentView: View {
   let audioUnit: AVAudioUnit
+  let auChannel: AUMessageChannel
   let langs: [(id: String, name: String)]
   let voices: [(id: String, name: String)]
   @State var synthText: String = "Hello"
@@ -109,11 +110,12 @@ struct ContentView: View {
   @State var voiceId: String = ""
   init(audioUnit: AVAudioUnit) {
     self.audioUnit = audioUnit
-    let params = audioUnit.auAudioUnit.parameterTree?.allParameters ?? []
-    let langIds = params.first(where: { $0.identifier == "langId" })?.valueStrings ?? []
-    let voiceIds = params.first(where: { $0.identifier == "voiceId" })?.valueStrings ?? []
-    let langNames = params.first(where: { $0.identifier == "langName" })?.valueStrings ?? []
-    let voiceNames = params.first(where: { $0.identifier == "voiceName" })?.valueStrings ?? []
+    self.auChannel = audioUnit.auAudioUnit.messageChannel(for: "espeakData")
+    let res = self.auChannel.callAudioUnit?(["initHost":true])
+    let langIds = (res?["langIds"] as? [String]) ?? []
+    let langNames = (res?["langNames"] as? [String]) ?? []
+    let voiceIds = (res?["voiceIds"] as? [String]) ?? []
+    let voiceNames = (res?["voiceNames"] as? [String]) ?? []
     self.langs = zip(langIds, langNames).map({ (id: $0.0, name: $0.1) })
     self.voices = zip(voiceIds, voiceNames).map({ (id: $0.0, name: $0.1) })
 

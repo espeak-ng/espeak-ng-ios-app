@@ -14,7 +14,6 @@ fileprivate let log = Logger(subsystem: "espeak-ng", category: "SynthAudioUnit")
 
 enum EspeakParameter: AUParameterAddress {
   case rate, volume, pitch, wordGap
-  case langId, voiceId, langName, voiceName
 }
 
 extension espeak_ng_STATUS {
@@ -191,38 +190,6 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
             valueStrings: nil,
             dependentParameters: nil
           ),
-          AUParameterTree.createParameter(
-            withIdentifier: "langId",
-            name: "",
-            address: EspeakParameter.langId.rawValue,
-            min: 0, max: .init(langs.count), unit: .indexed, unitName: nil,
-            valueStrings: langs.map({ $0.identifier }),
-            dependentParameters: nil
-          ),
-          AUParameterTree.createParameter(
-            withIdentifier: "langName",
-            name: "",
-            address: EspeakParameter.langName.rawValue,
-            min: 0, max: .init(langs.count), unit: .indexed, unitName: nil,
-            valueStrings: langs.map({ $0.name }),
-            dependentParameters: nil
-          ),
-          AUParameterTree.createParameter(
-            withIdentifier: "voiceId",
-            name: "",
-            address: EspeakParameter.voiceId.rawValue,
-            min: 0, max: .init(voices.count), unit: .indexed, unitName: nil,
-            valueStrings: voices.map({ $0.identifier }),
-            dependentParameters: nil
-          ),
-          AUParameterTree.createParameter(
-            withIdentifier: "voiceName",
-            name: "",
-            address: EspeakParameter.voiceName.rawValue,
-            min: 0, max: .init(voices.count), unit: .indexed, unitName: nil,
-            valueStrings: voices.map({ $0.name }),
-            dependentParameters: nil
-          ),
         ]
       )
     ])
@@ -352,6 +319,26 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
     self.outputOffset = 0
     log.info("stop synthesizing")
     self.outputMutex.signal()
+  }
+
+  public override func messageChannel(for channelName: String) -> AUMessageChannel {
+    class MC: AUMessageChannel {
+      var callHostBlock: CallHostBlock? { get { return nil } set {} }
+      func callAudioUnit(_ message: [AnyHashable : Any]) -> [AnyHashable : Any] {
+        let container = EspeakContainer.single
+        var resp: [AnyHashable:Any] = [:]
+        if message["initHost"] as? Bool == true {
+          let langs = container.langs ?? []
+          let voices = container.voices ?? []
+          resp["langIds"] = langs.map({ $0.identifier })
+          resp["langNames"] = langs.map({ $0.name })
+          resp["voiceIds"] = voices.map({ $0.identifier })
+          resp["voiceNames"] = voices.map({ $0.name })
+        }
+        return resp
+      }
+    }
+    return MC()
   }
 
   public override var speechVoices: [AVSpeechSynthesisProviderVoice] {
