@@ -26,25 +26,25 @@ fileprivate func synthCallback(samples: UnsafeMutablePointer<Int16>?, num_sample
   let holder = events?.pointee.user_data.assumingMemoryBound(to: SynthHolder.self).pointee
   let buf = UnsafeBufferPointer(start: samples, count: Int(num_samples))
   holder?.samples.append(contentsOf: buf)
-  log.trace("samples: count=\(num_samples, privacy: .public) max=\(buf.reduce(0, { max($0, abs($1)) }), privacy: .public)")
+//  log.trace("samples: count=\(num_samples, privacy: .public) max=\(buf.reduce(0, { max($0, abs($1)) }), privacy: .public)")
   var evt = events
   while let e = evt?.pointee, e.type != espeakEVENT_LIST_TERMINATED {
     holder?.events.append(e)
     evt = evt?.advanced(by: 1)
-    switch e.type {
-    case espeakEVENT_SAMPLERATE:
-      log.trace("samplerate: \(e.id.number, privacy: .public)")
-    case espeakEVENT_SENTENCE:
-      log.trace("sentence: \(e.id.number, privacy: .public) (smp=\(e.sample, privacy: .public))")
-    case espeakEVENT_WORD:
-      log.trace("word: \(e.id.number, privacy: .public) (smp=\(e.sample, privacy: .public))")
-    case espeakEVENT_PHONEME:
-      log.trace("phoneme: '\(withUnsafeBytes(of: e.id.string, { String(cString: $0.bindMemory(to: CChar.self).baseAddress!) }), privacy: .private(mask: .hash))' (smp=\(e.sample, privacy: .public))")
-    case espeakEVENT_END:
-      log.trace("end: (smp=\(e.sample, privacy: .public))")
-    default:
-      log.trace("event: \(e.type.rawValue, privacy: .public)")
-    }
+//    switch e.type {
+//    case espeakEVENT_SAMPLERATE:
+//      log.trace("samplerate: \(e.id.number, privacy: .public)")
+//    case espeakEVENT_SENTENCE:
+//      log.trace("sentence: \(e.id.number, privacy: .public) (smp=\(e.sample, privacy: .public))")
+//    case espeakEVENT_WORD:
+//      log.trace("word: \(e.id.number, privacy: .public) (smp=\(e.sample, privacy: .public))")
+//    case espeakEVENT_PHONEME:
+//      log.trace("phoneme: '\(withUnsafeBytes(of: e.id.string, { String(cString: $0.bindMemory(to: CChar.self).baseAddress!) }), privacy: .private(mask: .hash))' (smp=\(e.sample, privacy: .public))")
+//    case espeakEVENT_END:
+//      log.trace("end: (smp=\(e.sample, privacy: .public))")
+//    default:
+//      log.trace("event: \(e.type.rawValue, privacy: .public)")
+//    }
   }
   return 0
 }
@@ -55,8 +55,6 @@ class EspeakContainer {
   var langs
   @JSONUserDefaults<[_Voice]>(storage: groupData, key: \.espeakVoices)
   var voices
-  @JSONUserDefaults<[String:[String]]>(storage: groupData, key: \.espeakMappings)
-  var mappings
 
   private init() {
     do {
@@ -86,22 +84,13 @@ class EspeakContainer {
         res = groupData.espeakWordGap.flatMap({ espeak_ng_SetParameter(espeakWORDGAP, $0.int32Value, 0) }) ?? ENS_OK
         guard res == ENS_OK else { throw NSError(domain: EspeakErrorDomain, code: Int(res.rawValue)) }
       }
-      var updateMappings: Bool = false
       sp.withIntervalSignpost("buildVoiceList") {
         let new = espeakVoiceList()
-        if langs != new.langs { langs = new.langs ; updateMappings = true }
-        if voices != new.voices { voices = new.voices ; updateMappings = true }
+        if langs != new.langs { langs = new.langs }
+        if voices != new.voices { voices = new.voices }
         log.info("Langs: \(self.langs ?? [], privacy: .public)")
         log.info("Voices: \(self.voices ?? [], privacy: .public)")
       }
-      sp.withIntervalSignpost("buildMappings") {
-        if updateMappings || self.mappings?.isEmpty != false {
-          mappings = _buildMappings(langs ?? []).mapValues(Array.init)
-        }
-        log.info("Mappings: \(self.mappings ?? [:], privacy: .public)")
-      }
-      log.info("Synced Langs: \(self.langs ?? [], privacy: .public)")
-      log.info("Synced Voices: \(self.voices ?? [], privacy: .public)")
     } catch let e {
       log.error("\(e, privacy: .public)")
     }
@@ -305,17 +294,26 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
   public override var internalRenderBlock: AUInternalRenderBlock { self.performRender }
 
   public override func synthesizeSpeechRequest(_ speechRequest: AVSpeechSynthesisProviderRequest) {
+    let container = EspeakContainer.single
     let text = speechRequest.ssmlRepresentation
     let voice = speechRequest.voice.identifier
     let parts = voice.split(separator: ".")
     let voice_id = parts.last.flatMap({ String($0) })
-    let lang_id: String? = parts.prefix(parts.count-1).joined(separator: "/")
+    let lang_id: String?
+    log.trace("lang query: \(parts, privacy: .public)")
+    if parts.count >= 2, parts[0] == "auto" {
+      let espeakLang = matchLang(container.langs ?? [], Locale.Language(identifier: String(parts[1])))
+      lang_id = espeakLang?.identifier
+      log.info("lang auto: \(espeakLang?.identifier ?? "<???>", privacy: .public)")
+    } else {
+      lang_id = parts.prefix(parts.count-1).joined(separator: "/")
+      log.info("lang spec: \(lang_id ?? "<???>", privacy: .public)")
+    }
     let full_voice_id = [lang_id, voice_id == emptyVoiceId ? nil : voice_id].compactMap({ $0 }).joined(separator: "+")
     log.info("synth request: \(full_voice_id, privacy: .public) \(text, privacy: .public)")
     do {
       var holder = SynthHolder()
       try withUnsafeMutablePointer(to: &holder) { ptr in
-        _ = EspeakContainer.single
         var res: espeak_ng_STATUS
         if Self.espeakVoice != full_voice_id {
           res = espeak_ng_SetVoiceByName(full_voice_id)
@@ -351,29 +349,36 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
       let container = EspeakContainer.single
       log.info("speechVoices begin")
       var list = [AVSpeechSynthesisProviderVoice]()
-      list.reserveCapacity((container.mappings?.count ?? 0) * ((container.voices?.count ?? 0) + 1))
-      for (langId, localeIds) in container.mappings ?? [:] {
-        let langPath = langId.replacingOccurrences(of: "/", with: ".")
-        list.append(AVSpeechSynthesisProviderVoice(
-          name: "ESpeak",
-          identifier: "\(langPath).\(emptyVoiceId)",
-          primaryLanguages: localeIds,
-          supportedLanguages: localeIds
-        ))
-        for voice in container.voices ?? [] {
-          let v = AVSpeechSynthesisProviderVoice(
-            name: voice.name,
-            identifier: "\(langPath).\(voice.identifier)",
-            primaryLanguages: localeIds,
+      let voices = container.voices ?? []
+      let langs = container.langs ?? []
+      list.reserveCapacity(systemLanguages.count * (voices.count + 1))
+      for (_, langVariants) in systemLanguages {
+        for langVar in langVariants {
+          guard let _ = matchLang(langs, langVar) else { continue }
+          let langId = langVar.universalId
+          let langPath = "auto.\(langId.lowercased())"
+          let localeIds = [langId] // langVariants.map({ $0.universalId })
+          list.append(AVSpeechSynthesisProviderVoice(
+            name: "ESpeak",
+            identifier: "\(langPath).\(emptyVoiceId)",
+            primaryLanguages: [langId],
             supportedLanguages: localeIds
-          )
-          switch UInt32(voice.gender) {
-          case ENGENDER_MALE.rawValue: v.gender = .male
-          case ENGENDER_FEMALE.rawValue: v.gender = .female
-          default: v.gender = .unspecified
+          ))
+          for voice in voices {
+            let v = AVSpeechSynthesisProviderVoice(
+              name: voice.name,
+              identifier: "\(langPath).\(voice.identifier)",
+              primaryLanguages: [langId],
+              supportedLanguages: localeIds
+            )
+            switch UInt32(voice.gender) {
+            case ENGENDER_MALE.rawValue: v.gender = .male
+            case ENGENDER_FEMALE.rawValue: v.gender = .female
+            default: v.gender = .unspecified
+            }
+            v.age = Int(voice.age)
+            list.append(v)
           }
-          v.age = Int(voice.age)
-          list.append(v)
         }
       }
       log.info("speechVoices done: \(list.count)")
