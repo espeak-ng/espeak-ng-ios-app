@@ -13,7 +13,7 @@ import OSLog
 fileprivate let log = Logger(subsystem: "espeak-ng", category: "SynthAudioUnit")
 
 enum EspeakParameter: AUParameterAddress {
-  case rate, volume, pitch, wordGap
+  case rate, volume, pitch, wordGap, intonation
 }
 
 extension espeak_ng_STATUS {
@@ -67,6 +67,7 @@ class EspeakContainer {
     var volume: Int32?
     var pitch: Int32?
     var wordGap: Int32?
+    var intonation: Int32?
   }
   static let documentsDirectory = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
   @JSONFileBacked<[_Voice]>(storage: documentsDirectory.appending(component: "langs.json")) var langs
@@ -78,6 +79,7 @@ class EspeakContainer {
   var volume: Int32? { get { settings?.volume } set { settings?.volume = newValue } }
   var pitch: Int32? { get { settings?.pitch } set { settings?.pitch = newValue } }
   var wordGap: Int32? { get { settings?.wordGap } set { settings?.wordGap = newValue } }
+  var intonation: Int32? { get { settings?.intonation } set { settings?.intonation = newValue } }
 
   private init() {
     do {
@@ -90,6 +92,7 @@ class EspeakContainer {
       try sp.withIntervalSignpost("espeak_init") {
         try espeak_ng_Initialize(nil).check()
         try espeak_ng_InitializeOutput(ENOUTPUT_MODE_SYNCHRONOUS, 0, nil).check()
+        try espeak_ng_SetVoiceByName(ESPEAKNG_DEFAULT_VOICE).check()
         try espeak_ng_SetPhonemeEvents(1, 0).check()
         espeak_SetSynthCallback(synthCallback)
       }
@@ -98,6 +101,7 @@ class EspeakContainer {
         try volume.flatMap({ try espeak_ng_SetParameter(espeakVOLUME, $0, 0).check() })
         try pitch.flatMap({ try espeak_ng_SetParameter(espeakPITCH, $0, 0).check() })
         try wordGap.flatMap({ try espeak_ng_SetParameter(espeakWORDGAP, $0, 0).check() })
+        try intonation.flatMap({ try espeak_ng_SetParameter(espeakINTONATION, $0, 0).check() })
       }
       sp.withIntervalSignpost("buildVoiceList") {
         let new = espeakVoiceList()
@@ -190,6 +194,15 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
             valueStrings: nil,
             dependentParameters: nil
           ),
+          AUParameterTree.createParameter(
+            withIdentifier: "intonation",
+            name: "Intonation",
+            address: EspeakParameter.intonation.rawValue,
+            min: 0, max: 7, unit: .generic,
+            unitName: nil,
+            valueStrings: nil,
+            dependentParameters: nil
+          ),
         ]
       )
     ])
@@ -199,6 +212,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
       case EspeakParameter.volume.rawValue: return AUValue(espeak_GetParameter(espeakVOLUME, 1))
       case EspeakParameter.pitch.rawValue: return AUValue(espeak_GetParameter(espeakPITCH, 1))
       case EspeakParameter.wordGap.rawValue: return AUValue(espeak_GetParameter(espeakWORDGAP, 1))
+      case EspeakParameter.intonation.rawValue: return AUValue(espeak_GetParameter(espeakINTONATION, 1))
       default:
         log.warning("\(param, privacy: .public) => ???")
         return 0
@@ -219,6 +233,9 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
         case EspeakParameter.wordGap.rawValue:
           try espeak_ng_SetParameter(espeakWORDGAP, Int32(value), 0).check()
           container.wordGap = Int32(value)
+        case EspeakParameter.intonation.rawValue:
+          try espeak_ng_SetParameter(espeakINTONATION, Int32(value), 0).check()
+          container.intonation = Int32(value)
         default:
           log.warning("\(param, privacy: .public) => \(value, privacy: .public)")
         }
@@ -297,6 +314,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
       try withUnsafeMutablePointer(to: &holder) { ptr in
         if Self.espeakVoice != full_voice_id {
           try espeak_ng_SetVoiceByName(full_voice_id).check()
+          try container.intonation.flatMap({ try espeak_ng_SetParameter(espeakINTONATION, $0, 0).check() })
           Self.espeakVoice = full_voice_id
         }
         try espeak_ng_Synthesize(text, text.count, 0, POS_CHARACTER, 0, UInt32(espeakSSML | espeakCHARS_UTF8), nil, ptr).check()
