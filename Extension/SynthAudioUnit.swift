@@ -62,20 +62,28 @@ fileprivate func synthCallback(samples: UnsafeMutablePointer<Int16>?, num_sample
   return 0
 }
 
-let groupData = UserDefaults.standard
 class EspeakContainer {
-  @JSONUserDefaults<[_Voice]>(storage: groupData, key: \.espeakLangs) var langs
-  @JSONUserDefaults<[_Voice]>(storage: groupData, key: \.espeakVoices) var voices
-  @UserDefaultsField<NSNumber>(storage: groupData, key: \.espeakRate) var rate
-  @UserDefaultsField<NSNumber>(storage: groupData, key: \.espeakVolume) var volume
-  @UserDefaultsField<NSNumber>(storage: groupData, key: \.espeakPitch) var pitch
-  @UserDefaultsField<NSNumber>(storage: groupData, key: \.espeakWordGap) var wordGap
+  struct Settings: Codable {
+    var rate: Int32?
+    var volume: Int32?
+    var pitch: Int32?
+    var wordGap: Int32?
+  }
+  static let documentsDirectory = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+  @JSONFileBacked<[_Voice]>(storage: documentsDirectory.appending(component: "langs.json")) var langs
+  @JSONFileBacked<[_Voice]>(storage: documentsDirectory.appending(component: "voices.json")) var voices
+  @JSONFileBacked<Settings>(storage: documentsDirectory.appending(component: "settings.json"), create: Settings.init) private var settings
+
+  var rate: Int32? { get { settings?.rate } set { settings?.rate = newValue } }
+  var volume: Int32? { get { settings?.volume } set { settings?.volume = newValue } }
+  var pitch: Int32? { get { settings?.pitch } set { settings?.pitch = newValue } }
+  var wordGap: Int32? { get { settings?.wordGap } set { settings?.wordGap = newValue } }
 
   private init() {
     do {
       let sp = OSSignposter(logger: log)
       try sp.withIntervalSignpost("espeak_bundle") {
-        let root = try FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        let root = Self.documentsDirectory
         try EspeakLib.ensureBundleInstalled(inRoot: root)
         espeak_ng_InitializePath(root.path)
       }
@@ -86,10 +94,10 @@ class EspeakContainer {
         espeak_SetSynthCallback(synthCallback)
       }
       try sp.withIntervalSignpost("espeak_params") {
-        try rate.flatMap({ try espeak_ng_SetParameter(espeakRATE, $0.int32Value, 0).check() })
-        try volume.flatMap({ try espeak_ng_SetParameter(espeakVOLUME, $0.int32Value, 0).check() })
-        try pitch.flatMap({ try espeak_ng_SetParameter(espeakPITCH, $0.int32Value, 0).check() })
-        try wordGap.flatMap({ try espeak_ng_SetParameter(espeakWORDGAP, $0.int32Value, 0).check() })
+        try rate.flatMap({ try espeak_ng_SetParameter(espeakRATE, $0, 0).check() })
+        try volume.flatMap({ try espeak_ng_SetParameter(espeakVOLUME, $0, 0).check() })
+        try pitch.flatMap({ try espeak_ng_SetParameter(espeakPITCH, $0, 0).check() })
+        try wordGap.flatMap({ try espeak_ng_SetParameter(espeakWORDGAP, $0, 0).check() })
       }
       sp.withIntervalSignpost("buildVoiceList") {
         let new = espeakVoiceList()
@@ -234,16 +242,16 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
         switch param.address {
         case EspeakParameter.rate.rawValue:
           try espeak_ng_SetParameter(espeakRATE, Int32(value), 0).check()
-          container.rate = .init(value: Int32(value))
+          container.rate = Int32(value)
         case EspeakParameter.volume.rawValue:
           try espeak_ng_SetParameter(espeakVOLUME, Int32(value), 0).check()
-          container.volume = .init(value: Int32(value))
+          container.volume = Int32(value)
         case EspeakParameter.pitch.rawValue:
           try espeak_ng_SetParameter(espeakPITCH, Int32(value), 0).check()
-          container.pitch = .init(value: Int32(value))
+          container.pitch = Int32(value)
         case EspeakParameter.wordGap.rawValue:
           try espeak_ng_SetParameter(espeakWORDGAP, Int32(value), 0).check()
-          container.wordGap = .init(value: Int32(value))
+          container.wordGap = Int32(value)
         default:
           log.warning("\(param, privacy: .public) => \(value, privacy: .public)")
         }
