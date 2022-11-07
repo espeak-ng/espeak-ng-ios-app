@@ -56,6 +56,15 @@ struct VoiceOverLangSelector: View {
     }
   }
 
+  private struct _HeadNote: View {
+    let section: _Section
+    var body: some View {
+      if section == .all {
+        Text("Languages listed below may be poorly supported by VoiceOver and might be broken at all. They are available in \"Spoken content\".").font(.footnote).foregroundColor(.secondary)
+      }
+    }
+  }
+
   @Binding var selectedLangs: Set<String>
   @State var searchText: String = ""
   let voiceOverLocales: Set<String>
@@ -64,6 +73,7 @@ struct VoiceOverLangSelector: View {
     List {
       ForEach([_Section.user, .system, .all], id: \.rawValue) { sect in
         Section {
+          _HeadNote(section: sect)
           ForEach(sect.langs.filter({
             voiceOverLocales.contains($0.universalId) == true &&
             (searchText.isEmpty || $0.localizedTitle.lowercased().contains(searchText.lowercased()))
