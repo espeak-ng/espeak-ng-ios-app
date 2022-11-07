@@ -51,7 +51,7 @@ struct AboutScreen: View {
         Text("eSpeak-NG \(platform) app").font(.headline)
         Text("eSpeak NG app is wrote by Yury Popov (@djphoenix). It is always free and open with respect to blind people.")
         HStack {
-          IconLinkButton(iconName: "github", url: "https://github.com/djphoenix")
+          IconLinkButton(iconName: "github", url: "https://github.com/espeak-ng/espeak-ng-ios-app")
           IconLinkButton(iconName: "telegram", url: "http://t.me/djphoenix")
           IconLinkButton(iconName: "vk", url: "http://vk.com/djphoenix.hardcore")
         }
