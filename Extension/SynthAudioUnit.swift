@@ -70,8 +70,8 @@ class EspeakContainer {
     var intonation: Int32?
   }
   static let documentsDirectory = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-  @JSONFileBacked<[_Voice]>(storage: documentsDirectory.appending(component: "langs.json")) var langs
-  @JSONFileBacked<[_Voice]>(storage: documentsDirectory.appending(component: "voices.json")) var voices
+  var langs: [_Voice]
+  var voices: [_Voice]
   @JSONFileBacked<[String]>(storage: documentsDirectory.appending(component: "exposed.json")) var exposedLocales
   @JSONFileBacked<Settings>(storage: documentsDirectory.appending(component: "settings.json"), create: Settings.init) private var settings
 
@@ -96,24 +96,30 @@ class EspeakContainer {
         try espeak_ng_SetPhonemeEvents(1, 0).check()
         espeak_SetSynthCallback(synthCallback)
       }
-      try sp.withIntervalSignpost("espeak_params") {
-        try rate.flatMap({ try espeak_ng_SetParameter(espeakRATE, $0, 0).check() })
-        try volume.flatMap({ try espeak_ng_SetParameter(espeakVOLUME, $0, 0).check() })
-        try pitch.flatMap({ try espeak_ng_SetParameter(espeakPITCH, $0, 0).check() })
-        try wordGap.flatMap({ try espeak_ng_SetParameter(espeakWORDGAP, $0, 0).check() })
-        try intonation.flatMap({ try espeak_ng_SetParameter(espeakINTONATION, $0, 0).check() })
-      }
-      sp.withIntervalSignpost("buildVoiceList") {
+      (langs, voices) = sp.withIntervalSignpost("espeak_voices") {
         let new = espeakVoiceList()
-        if langs != new.langs { langs = new.langs }
-        if voices != new.voices { voices = new.voices }
-        if exposedLocales == nil { exposedLocales = defaultLanguages.filter({ matchLang(new.langs, $0) != nil }).map({ $0.universalId }) }
-        log.info("Langs: \(self.langs ?? [], privacy: .public)")
-        log.info("Voices: \(self.voices ?? [], privacy: .public)")
+        log.info("Langs: \(new.langs, privacy: .public)")
+        log.info("Voices: \(new.voices, privacy: .public)")
+        return new
+      }
+      sp.withIntervalSignpost("expose") {
+        if exposedLocales == nil {
+          exposedLocales = defaultLanguages.filter({ matchLang(langs, $0) != nil }).map({ $0.universalId })
+        }
+        log.info("Exposed: \(self.exposedLocales ?? [], privacy: .public)")
       }
     } catch let e {
       log.error("\(e, privacy: .public)")
+      langs = []
+      voices = []
     }
+  }
+  func setParams() throws {
+    try rate.flatMap({ try espeak_ng_SetParameter(espeakRATE, $0, 0).check() })
+    try volume.flatMap({ try espeak_ng_SetParameter(espeakVOLUME, $0, 0).check() })
+    try pitch.flatMap({ try espeak_ng_SetParameter(espeakPITCH, $0, 0).check() })
+    try wordGap.flatMap({ try espeak_ng_SetParameter(espeakWORDGAP, $0, 0).check() })
+    try intonation.flatMap({ try espeak_ng_SetParameter(espeakINTONATION, $0, 0).check() })
   }
   static private let _single = EspeakContainer()
   static var single: EspeakContainer {
@@ -208,39 +214,25 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
     ])
     self.parameterTree?.implementorValueProvider = { param in
       switch param.address {
-      case EspeakParameter.rate.rawValue: return AUValue(espeak_GetParameter(espeakRATE, 1))
-      case EspeakParameter.volume.rawValue: return AUValue(espeak_GetParameter(espeakVOLUME, 1))
-      case EspeakParameter.pitch.rawValue: return AUValue(espeak_GetParameter(espeakPITCH, 1))
-      case EspeakParameter.wordGap.rawValue: return AUValue(espeak_GetParameter(espeakWORDGAP, 1))
-      case EspeakParameter.intonation.rawValue: return AUValue(espeak_GetParameter(espeakINTONATION, 1))
+      case EspeakParameter.rate.rawValue: return AUValue(container.rate ?? espeak_GetParameter(espeakRATE, 1))
+      case EspeakParameter.volume.rawValue: return AUValue(container.volume ?? espeak_GetParameter(espeakVOLUME, 1))
+      case EspeakParameter.pitch.rawValue: return AUValue(container.pitch ?? espeak_GetParameter(espeakPITCH, 1))
+      case EspeakParameter.wordGap.rawValue: return AUValue(container.wordGap ?? espeak_GetParameter(espeakWORDGAP, 1))
+      case EspeakParameter.intonation.rawValue: return AUValue(container.intonation ?? espeak_GetParameter(espeakINTONATION, 1))
       default:
         log.warning("\(param, privacy: .public) => ???")
         return 0
       }
     }
     self.parameterTree?.implementorValueObserver = { param, value in
-      do {
-        switch param.address {
-        case EspeakParameter.rate.rawValue:
-          try espeak_ng_SetParameter(espeakRATE, Int32(value), 0).check()
-          container.rate = Int32(value)
-        case EspeakParameter.volume.rawValue:
-          try espeak_ng_SetParameter(espeakVOLUME, Int32(value), 0).check()
-          container.volume = Int32(value)
-        case EspeakParameter.pitch.rawValue:
-          try espeak_ng_SetParameter(espeakPITCH, Int32(value), 0).check()
-          container.pitch = Int32(value)
-        case EspeakParameter.wordGap.rawValue:
-          try espeak_ng_SetParameter(espeakWORDGAP, Int32(value), 0).check()
-          container.wordGap = Int32(value)
-        case EspeakParameter.intonation.rawValue:
-          try espeak_ng_SetParameter(espeakINTONATION, Int32(value), 0).check()
-          container.intonation = Int32(value)
-        default:
-          log.warning("\(param, privacy: .public) => \(value, privacy: .public)")
-        }
-      } catch let e {
-        log.error("espeak_ng_SetParameter: \(e, privacy: .public)")
+      switch param.address {
+      case EspeakParameter.rate.rawValue: container.rate = Int32(value)
+      case EspeakParameter.volume.rawValue: container.volume = Int32(value)
+      case EspeakParameter.pitch.rawValue: container.pitch = Int32(value)
+      case EspeakParameter.wordGap.rawValue: container.wordGap = Int32(value)
+      case EspeakParameter.intonation.rawValue: container.intonation = Int32(value)
+      default:
+        log.warning("\(param, privacy: .public) => \(value, privacy: .public)")
       }
     }
     for p in self.parameterTree?.allParameters ?? [] {
@@ -300,7 +292,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
     let lang_id: String?
     log.trace("lang query: \(parts, privacy: .public)")
     if parts.count >= 2, parts[0] == "auto" {
-      let espeakLang = matchLang(container.langs ?? [], Locale.Language(identifier: String(parts[1])))
+      let espeakLang = matchLang(container.langs, Locale.Language(identifier: String(parts[1])))
       lang_id = espeakLang?.identifier
       log.info("lang auto: \(espeakLang?.identifier ?? "<???>", privacy: .public)")
     } else {
@@ -314,9 +306,9 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
       try withUnsafeMutablePointer(to: &holder) { ptr in
         if Self.espeakVoice != full_voice_id {
           try espeak_ng_SetVoiceByName(full_voice_id).check()
-          try container.intonation.flatMap({ try espeak_ng_SetParameter(espeakINTONATION, $0, 0).check() })
           Self.espeakVoice = full_voice_id
         }
+        try container.setParams()
         try espeak_ng_Synthesize(text, text.count, 0, POS_CHARACTER, 0, UInt32(espeakSSML | espeakCHARS_UTF8), nil, ptr).check()
         try espeak_ng_Synchronize().check()
       }
@@ -346,8 +338,8 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
         let container = EspeakContainer.single
         var resp: [AnyHashable:Any] = [:]
         if message["initHost"] as? Bool == true {
-          let langs = container.langs ?? []
-          let voices = container.voices ?? []
+          let langs = container.langs
+          let voices = container.voices
           resp["langIds"] = langs.map({ $0.identifier })
           resp["langNames"] = langs.map({ $0.name })
           resp["voiceIds"] = voices.map({ $0.identifier })
@@ -370,8 +362,8 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
       let container = EspeakContainer.single
       log.info("speechVoices begin")
       var list = [AVSpeechSynthesisProviderVoice]()
-      let voices = container.voices ?? []
-      let langs = container.langs ?? []
+      let voices = container.voices
+      let langs = container.langs
       let exposed = container.exposedLocales ?? []
       log.info("exposed: \(exposed, privacy: .public)")
       for (_, langVariants) in systemLanguages {
