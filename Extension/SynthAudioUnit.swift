@@ -13,7 +13,7 @@ import OSLog
 fileprivate let log = Logger(subsystem: "espeak-ng", category: "SynthAudioUnit")
 
 enum EspeakParameter: AUParameterAddress {
-  case rate, volume, pitch, wordGap, intonation
+  case rate, volume, pitch, wordGap, range
 }
 
 extension espeak_ng_STATUS {
@@ -67,7 +67,7 @@ class EspeakContainer {
     var volume: Int32?
     var pitch: Int32?
     var wordGap: Int32?
-    var intonation: Int32?
+    var range: Int32?
   }
   static let documentsDirectory = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
   var langs: [_Voice]
@@ -79,7 +79,7 @@ class EspeakContainer {
   var volume: Int32? { get { settings?.volume } set { settings?.volume = newValue } }
   var pitch: Int32? { get { settings?.pitch } set { settings?.pitch = newValue } }
   var wordGap: Int32? { get { settings?.wordGap } set { settings?.wordGap = newValue } }
-  var intonation: Int32? { get { settings?.intonation } set { settings?.intonation = newValue } }
+  var range: Int32? { get { settings?.range } set { settings?.range = newValue } }
 
   private init() {
     do {
@@ -119,7 +119,7 @@ class EspeakContainer {
     try volume.flatMap({ try espeak_ng_SetParameter(espeakVOLUME, $0, 0).check() })
     try pitch.flatMap({ try espeak_ng_SetParameter(espeakPITCH, $0, 0).check() })
     try wordGap.flatMap({ try espeak_ng_SetParameter(espeakWORDGAP, $0, 0).check() })
-    try intonation.flatMap({ try espeak_ng_SetParameter(espeakINTONATION, $0, 0).check() })
+    try range.flatMap({ try espeak_ng_SetParameter(espeakRANGE, $0, 0).check() })
   }
   static private let _single = EspeakContainer()
   static var single: EspeakContainer {
@@ -201,10 +201,10 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
             dependentParameters: nil
           ),
           AUParameterTree.createParameter(
-            withIdentifier: "intonation",
-            name: "Intonation",
-            address: EspeakParameter.intonation.rawValue,
-            min: 0, max: 7, unit: .generic,
+            withIdentifier: "range",
+            name: "Inflection",
+            address: EspeakParameter.range.rawValue,
+            min: 0, max: 100, unit: .percent,
             unitName: nil,
             valueStrings: nil,
             dependentParameters: nil
@@ -218,7 +218,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
       case EspeakParameter.volume.rawValue: return AUValue(container.volume ?? espeak_GetParameter(espeakVOLUME, 1))
       case EspeakParameter.pitch.rawValue: return AUValue(container.pitch ?? espeak_GetParameter(espeakPITCH, 1))
       case EspeakParameter.wordGap.rawValue: return AUValue(container.wordGap ?? espeak_GetParameter(espeakWORDGAP, 1))
-      case EspeakParameter.intonation.rawValue: return AUValue(container.intonation ?? espeak_GetParameter(espeakINTONATION, 1))
+      case EspeakParameter.range.rawValue: return AUValue(container.range ?? espeak_GetParameter(espeakRANGE, 1))
       default:
         log.warning("\(param, privacy: .public) => ???")
         return 0
@@ -230,7 +230,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
       case EspeakParameter.volume.rawValue: container.volume = Int32(value)
       case EspeakParameter.pitch.rawValue: container.pitch = Int32(value)
       case EspeakParameter.wordGap.rawValue: container.wordGap = Int32(value)
-      case EspeakParameter.intonation.rawValue: container.intonation = Int32(value)
+      case EspeakParameter.range.rawValue: container.range = Int32(value)
       default:
         log.warning("\(param, privacy: .public) => \(value, privacy: .public)")
       }
