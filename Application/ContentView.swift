@@ -107,7 +107,9 @@ struct ContentView: View {
   let auChannel: AUMessageChannel
   let langs: [(id: String, name: String)]
   let voices: [(id: String, name: String)]
+  #if os(iOS)
   let audioSession = AVAudioSession.sharedInstance()
+  #endif
   @State var synthText: String = "Hello"
   @State var langId: String = "gmw/en-US"
   @State var voiceId: String = ""
@@ -116,12 +118,14 @@ struct ContentView: View {
   init(audioUnit: AVAudioUnit) {
     self.audioUnit = audioUnit
     self.auChannel = audioUnit.auAudioUnit.messageChannel(for: "espeakData")
+    #if os(iOS)
     try? audioSession.setCategory(
       .playback,
       mode: .spokenAudio,
       policy: .default,
       options: [.duckOthers]
     )
+    #endif
     let res = self.auChannel.callAudioUnit?(["initHost":true])
     let langIds = (res?["langIds"] as? [String]) ?? []
     let langNames = (res?["langNames"] as? [String]) ?? []
@@ -161,8 +165,10 @@ struct ContentView: View {
       AVSpeechSynthesisProviderVoice.updateSpeechVoices()
     })
     .navigationTitle("eSpeak-NG")
+    #if os(iOS)
     .onAppear { try? audioSession.setActive(true) ; try? engine.start() }
     .onDisappear { engine.stop() ; try? audioSession.setActive(false) }
+    #endif
     .toolbar {
       NavigationLink(destination: {
         VoiceOverLangSelector(
