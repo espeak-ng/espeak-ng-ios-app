@@ -52,6 +52,7 @@ struct VoiceSelector: View {
 
 struct TextInput: View {
   @Binding var synthText: String
+  @AccessibilityFocusState var accessibilityFocused: Bool
   let block: (String) -> Void
   var body: some View {
     HStack {
@@ -59,8 +60,9 @@ struct TextInput: View {
         .accessibilityLabel("Text to speak")
         .textFieldStyle(.roundedBorder).frame(maxWidth: .infinity)
       Button("eSpeak!") { block(synthText) }
-        .accessibilityLabel("Synthesize")
+        .accessibilityLabel(accessibilityFocused ? "" : "Synthesize")
         .accessibilityAddTraits(.playsSound)
+        .accessibilityFocused($accessibilityFocused)
         .buttonStyle(.bordered)
     }
   }
