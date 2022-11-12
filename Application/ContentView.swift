@@ -75,6 +75,11 @@ struct ParameterSlider: View {
     self.parameter = param
     self.value = Float(param.value)
   }
+  #if os(iOS)
+  private let isiOS = true
+  #else
+  private let isiOS = false
+  #endif
   var body: some View {
     VStack {
       Text("\(parameter.displayName): \(Int32(value))")
@@ -85,10 +90,13 @@ struct ParameterSlider: View {
         in: Float(parameter.minValue)...Float(parameter.maxValue),
         step: 1,
         onEditingChanged: { if !$0 { parameter.value = .init(value) } },
-        minimumValueLabel: Text("\(Int32(parameter.minValue))").accessibilityHidden(true),
-        maximumValueLabel: Text("\(Int32(parameter.maxValue))").accessibilityHidden(true),
-        label: { Text(parameter.displayName) }
-      ).accessibilityHint("\(Int32(parameter.minValue)) to \(Int32(parameter.maxValue))")
+        minimumValueLabel: Text("\(Int32(parameter.minValue))").accessibilityHidden(isiOS),
+        maximumValueLabel: Text("\(Int32(parameter.maxValue))").accessibilityHidden(isiOS),
+        label: {}
+      )
+      .accessibilityElement(children: .contain)
+      .accessibilityLabel(Text(parameter.displayName))
+      .accessibilityHint("\(Int32(parameter.minValue)) to \(Int32(parameter.maxValue))")
     }
     .padding()
     .background(
