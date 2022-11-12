@@ -26,8 +26,11 @@ struct SelectionScreen<Element, I: Hashable & Equatable, V: View>: View {
             .opacity(isSelected(item[keyPath: id]) ? 1 : 0)
             .accessibilityHidden(!isSelected(item[keyPath: id]))
         }
-      }.tint(.primary)
+      }.tint(.primary).buttonStyle(BorderlessButtonStyle())
     }
+    #if os(macOS)
+    .listStyle(InsetListStyle(alternatesRowBackgrounds: true))
+    #endif
   }
 }
 

@@ -92,12 +92,15 @@ struct VoiceOverLangSelector: View {
                   .opacity(selectedLangs.contains(lang.universalId) ? 1 : 0)
                   .accessibility(hidden: !selectedLangs.contains(lang.universalId))
               }
-            }.tint(.primary)
+            }.tint(.primary).buttonStyle(BorderlessButtonStyle())
           }
         } header: {
           Text(sect.title)
         }
       }
     }.navigationTitle("VoiceOver").searchable(text: $searchText)
+    #if os(macOS)
+    .listStyle(InsetListStyle(alternatesRowBackgrounds: true))
+    #endif
   }
 }
