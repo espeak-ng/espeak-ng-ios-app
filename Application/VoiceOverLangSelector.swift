@@ -98,9 +98,12 @@ struct VoiceOverLangSelector: View {
           Text(sect.title)
         }
       }
-    }.navigationTitle("VoiceOver").searchable(text: $searchText)
+    }.navigationTitle("VoiceOver")
     #if os(macOS)
-    .listStyle(InsetListStyle(alternatesRowBackgrounds: true))
+      .searchable(text: $searchText, placement: SearchFieldPlacement.toolbar)
+      .listStyle(InsetListStyle(alternatesRowBackgrounds: true))
+    #else
+      .searchable(text: $searchText, placement: SearchFieldPlacement.navigationBarDrawer(displayMode: .always))
     #endif
   }
 }
