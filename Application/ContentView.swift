@@ -141,6 +141,9 @@ struct ContentView: View {
     engine.attach(audioUnit)
     engine.connect(audioUnit, to: engine.outputNode, format: format)
     engine.prepare()
+    #if !os(iOS)
+    try? engine.start()
+    #endif
   }
   var body: some View {
     ScrollView {
