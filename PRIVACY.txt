@@ -1,0 +1,7 @@
+This privacy policy covers the use of the 'eSpeak-NG for iOS'
+and 'eSpeak-NG for macOS' applications.
+
+eSpeak-NG does not collect any statistics, personal information,
+or analytics from our users, other than built in mechanisms
+that are present for all the applications in their respective
+main distribution channels.
