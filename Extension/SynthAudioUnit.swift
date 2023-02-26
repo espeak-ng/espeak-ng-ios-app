@@ -22,7 +22,7 @@ import OSLog
 fileprivate let log = Logger(subsystem: "espeak-ng", category: "SynthAudioUnit")
 
 enum EspeakParameter: AUParameterAddress {
-  case rate, volume, pitch, wordGap, range
+  case rate, volume, pitch, wordGap, range, ssml_breaks
 }
 
 extension espeak_ng_STATUS {
@@ -77,6 +77,7 @@ class EspeakContainer {
     var pitch: Int32?
     var wordGap: Int32?
     var range: Int32?
+    var ssml_breaks: Int32?
   }
   static let documentsDirectory = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
   var langs: [_Voice]
@@ -89,6 +90,7 @@ class EspeakContainer {
   var pitch: Int32? { get { settings?.pitch } set { settings?.pitch = newValue } }
   var wordGap: Int32? { get { settings?.wordGap } set { settings?.wordGap = newValue } }
   var range: Int32? { get { settings?.range } set { settings?.range = newValue } }
+  var ssml_breaks: Int32? { get { settings?.ssml_breaks } set { settings?.ssml_breaks = newValue } }
 
   private init() {
     do {
@@ -129,6 +131,7 @@ class EspeakContainer {
     try pitch.flatMap({ try espeak_ng_SetParameter(espeakPITCH, $0, 0).check() })
     try wordGap.flatMap({ try espeak_ng_SetParameter(espeakWORDGAP, $0, 0).check() })
     try range.flatMap({ try espeak_ng_SetParameter(espeakRANGE, $0, 0).check() })
+    try ssml_breaks.flatMap({ try espeak_ng_SetParameter(espeakSSML_BREAK_MUL, $0, 0).check() })
   }
   static private let _single = EspeakContainer()
   static var single: EspeakContainer {
@@ -218,6 +221,15 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
             valueStrings: nil,
             dependentParameters: nil
           ),
+          AUParameterTree.createParameter(
+            withIdentifier: "ssml_break",
+            name: "SSML break time multiplier",
+            address: EspeakParameter.ssml_breaks.rawValue,
+            min: 0, max: 200, unit: .percent,
+            unitName: nil,
+            valueStrings: nil,
+            dependentParameters: nil
+          ),
         ]
       )
     ])
@@ -228,6 +240,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
       case EspeakParameter.pitch.rawValue: return AUValue(container.pitch ?? espeak_GetParameter(espeakPITCH, 1))
       case EspeakParameter.wordGap.rawValue: return AUValue(container.wordGap ?? espeak_GetParameter(espeakWORDGAP, 1))
       case EspeakParameter.range.rawValue: return AUValue(container.range ?? espeak_GetParameter(espeakRANGE, 1))
+      case EspeakParameter.ssml_breaks.rawValue: return AUValue(container.ssml_breaks ?? espeak_GetParameter(espeakSSML_BREAK_MUL, 1))
       default:
         log.warning("\(param, privacy: .public) => ???")
         return 0
@@ -240,6 +253,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
       case EspeakParameter.pitch.rawValue: container.pitch = Int32(value)
       case EspeakParameter.wordGap.rawValue: container.wordGap = Int32(value)
       case EspeakParameter.range.rawValue: container.range = Int32(value)
+      case EspeakParameter.ssml_breaks.rawValue: container.ssml_breaks = Int32(value)
       default:
         log.warning("\(param, privacy: .public) => \(value, privacy: .public)")
       }
