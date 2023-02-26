@@ -68,11 +68,14 @@ struct TextInput: View {
   @AccessibilityFocusState var accessibilityFocused: Bool
   let block: (String) -> Void
   var body: some View {
-    HStack {
-      TextField("text", text: $synthText)
+    VStack {
+      TextField("Text", text: $synthText, axis: .vertical)
+        .lineLimit(1...7)
         .accessibilityLabel("Text to speak")
         .textFieldStyle(.roundedBorder).frame(maxWidth: .infinity)
-      Button("eSpeak!") { block(synthText) }
+      Button(action: { block(synthText) }) {
+        Text("eSpeak!").frame(maxWidth: .infinity)
+      }
         .accessibilityLabel(accessibilityFocused ? "" : "Synthesize")
         .accessibilityAddTraits(.playsSound)
         .accessibilityFocused($accessibilityFocused)
