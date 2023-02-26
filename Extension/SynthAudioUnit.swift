@@ -47,25 +47,29 @@ fileprivate func synthCallback(samples: UnsafeMutablePointer<Int16>?, num_sample
   let holder = events?.pointee.user_data.assumingMemoryBound(to: SynthHolder.self).pointee
   let buf = UnsafeBufferPointer(start: samples, count: Int(num_samples))
   holder?.samples.append(contentsOf: buf)
-//  log.trace("samples: count=\(num_samples, privacy: .public) max=\(buf.reduce(0, { max($0, abs($1)) }), privacy: .public)")
+  #if DEBUG
+  log.trace("samples: count=\(num_samples, privacy: .public) max=\(buf.reduce(0, { max($0, abs($1)) }), privacy: .public)")
+  #endif
   var evt = events
   while let e = evt?.pointee, e.type != espeakEVENT_LIST_TERMINATED {
     holder?.events.append(e)
     evt = evt?.advanced(by: 1)
-//    switch e.type {
-//    case espeakEVENT_SAMPLERATE:
-//      log.trace("samplerate: \(e.id.number, privacy: .public)")
-//    case espeakEVENT_SENTENCE:
-//      log.trace("sentence: \(e.id.number, privacy: .public) (smp=\(e.sample, privacy: .public))")
-//    case espeakEVENT_WORD:
-//      log.trace("word: \(e.id.number, privacy: .public) (smp=\(e.sample, privacy: .public))")
-//    case espeakEVENT_PHONEME:
-//      log.trace("phoneme: '\(withUnsafeBytes(of: e.id.string, { String(cString: $0.bindMemory(to: CChar.self).baseAddress!) }), privacy: .private(mask: .hash))' (smp=\(e.sample, privacy: .public))")
-//    case espeakEVENT_END:
-//      log.trace("end: (smp=\(e.sample, privacy: .public))")
-//    default:
-//      log.trace("event: \(e.type.rawValue, privacy: .public)")
-//    }
+    #if DEBUG
+    switch e.type {
+    case espeakEVENT_SAMPLERATE:
+      log.trace("samplerate: \(e.id.number, privacy: .public)")
+    case espeakEVENT_SENTENCE:
+      log.trace("sentence: \(e.id.number, privacy: .public) (smp=\(e.sample, privacy: .public))")
+    case espeakEVENT_WORD:
+      log.trace("word: \(e.id.number, privacy: .public) (smp=\(e.sample, privacy: .public))")
+    case espeakEVENT_PHONEME:
+      log.trace("phoneme: '\(withUnsafeBytes(of: e.id.string, { String(cString: $0.bindMemory(to: CChar.self).baseAddress!) }), privacy: .private(mask: .hash))' (smp=\(e.sample, privacy: .public))")
+    case espeakEVENT_END:
+      log.trace("end: (smp=\(e.sample, privacy: .public))")
+    default:
+      log.trace("event: \(e.type.rawValue, privacy: .public)")
+    }
+    #endif
   }
   return 0
 }
@@ -394,7 +398,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
           guard let _ = matchLang(langs, langVar) else { continue }
           let langId = langVar.universalId
           let langPath = "auto.\(langId.lowercased())"
-          let localeIds = [langId] // langVariants.map({ $0.universalId })
+          let localeIds = [langId]
           list.append(AVSpeechSynthesisProviderVoice(
             name: "ESpeak",
             identifier: "\(langPath).\(emptyVoiceId)",

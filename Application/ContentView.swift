@@ -123,11 +123,6 @@ struct ParameterSlider: View {
   }
 }
 
-class _Dummy {
-  @objc var voicesData: Data? { nil }
-  @objc var langsData: Data? { nil }
-}
-
 struct ContentView: View {
   let audioUnit: AVAudioUnit
   let auChannel: AUMessageChannel
