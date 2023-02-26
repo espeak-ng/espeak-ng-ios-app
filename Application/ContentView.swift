@@ -97,7 +97,7 @@ struct ParameterSlider: View {
   private let isiOS = false
   #endif
   var body: some View {
-    VStack {
+    VStack(spacing: 4) {
       Text("\(parameter.displayName): \(Int32(value))")
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityHidden(true)
@@ -106,15 +106,17 @@ struct ParameterSlider: View {
         in: Float(parameter.minValue)...Float(parameter.maxValue),
         step: 1,
         onEditingChanged: { if !$0 { parameter.value = .init(value) } },
-        minimumValueLabel: Text("\(Int32(parameter.minValue))").accessibilityHidden(isiOS),
-        maximumValueLabel: Text("\(Int32(parameter.maxValue))").accessibilityHidden(isiOS),
+        minimumValueLabel: Text("\(Int32(parameter.minValue))").dynamicTypeSize(.small).accessibilityHidden(isiOS),
+        maximumValueLabel: Text("\(Int32(parameter.maxValue))").dynamicTypeSize(.small).accessibilityHidden(isiOS),
         label: {}
       )
       .accessibilityElement(children: .contain)
       .accessibilityLabel(Text(parameter.displayName))
       .accessibilityHint("\(Int32(parameter.minValue)) to \(Int32(parameter.maxValue))")
     }
-    .padding()
+    .padding(.top, 6)
+    .padding(.bottom, 4)
+    .padding(.horizontal)
     .background(
       RoundedRectangle(cornerRadius: 8).foregroundColor(.secondaryBackground)
     )
