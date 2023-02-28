@@ -50,7 +50,7 @@ struct AboutScreen: View {
     ScrollView {
       VStack(spacing: 8) {
         Text("eSpeak-NG").font(.headline)
-        Text("The eSpeak NG is a compact open source software text-to-speech synthesizer. It supports more than 100 languages and accents. It is based on the eSpeak engine created by Jonathan Duddington.")
+        Text("about.espeak")
         HStack {
           IconLinkButton(iconName: "github", url: "https://github.com/espeak-ng/espeak-ng")
         }
@@ -62,7 +62,7 @@ struct AboutScreen: View {
 
       VStack(spacing: 8) {
         Text("eSpeak-NG \(platform) app").font(.headline)
-        Text("eSpeak NG app is wrote by Yury Popov (@djphoenix). It is always free and open with respect to blind people.")
+        Text("about.espeak-app")
         HStack {
           IconLinkButton(iconName: "github", url: "https://github.com/espeak-ng/espeak-ng-ios-app")
           IconLinkButton(iconName: "telegram", url: "http://t.me/djphoenix")

@@ -40,7 +40,7 @@ extension Locale.Language {
   }
   var universal: Locale.Language { .init(identifier: universalId) }
   var localizedTitle: String {
-    guard let langTitle = languageCode.flatMap({ currentLocale.localizedString(forLanguageCode: $0.identifier) }) else { return self.maximalIdentifier }
+    guard let langTitle = languageCode.flatMap({ currentLocale.localizedString(forLanguageCode: $0.identifier)?.localizedCapitalized }) else { return self.maximalIdentifier }
     if let regionTitle = region.flatMap({ currentLocale.localizedString(forRegionCode: $0.identifier) }) {
       return "\(langTitle) (\(regionTitle))"
     } else {
@@ -51,20 +51,20 @@ extension Locale.Language {
 
 struct VoiceOverLangSelector: View {
   private enum _Section: String {
-    case user, system, all
+    case user, system, other
 
-    var title: String {
+    var title: LocalizedStringKey {
       switch self {
       case .user: return "User preferred"
       case .system: return "System"
-      case .all: return "All"
+      case .other: return "Other"
       }
     }
     var langs: [Locale.Language] {
       switch self {
       case .user: return userLangs.sorted(by: { $0.localizedTitle.lexicographicallyPrecedes($1.localizedTitle) })
       case .system: return systemLangs.subtracting(userLangs).sorted(by: { $0.localizedTitle.lexicographicallyPrecedes($1.localizedTitle) })
-      case .all: return allLangs.subtracting(userLangs).subtracting(systemLangs).sorted(by: { $0.localizedTitle.lexicographicallyPrecedes($1.localizedTitle) })
+      case .other: return allLangs.subtracting(userLangs).subtracting(systemLangs).sorted(by: { $0.localizedTitle.lexicographicallyPrecedes($1.localizedTitle) })
       }
     }
   }
@@ -72,8 +72,8 @@ struct VoiceOverLangSelector: View {
   private struct _HeadNote: View {
     let section: _Section
     var body: some View {
-      if section == .all {
-        Text("Languages listed below may be poorly supported by VoiceOver and might be broken at all. They are available in \"Spoken content\".").font(.footnote).foregroundColor(.secondary)
+      if section == .other {
+        Text("langs.other.note").font(.footnote).foregroundColor(.secondary)
       }
     }
   }
@@ -84,7 +84,7 @@ struct VoiceOverLangSelector: View {
 
   var body: some View {
     List {
-      ForEach([_Section.user, .system, .all], id: \.rawValue) { sect in
+      ForEach([_Section.user, .system, .other], id: \.rawValue) { sect in
         Section {
           _HeadNote(section: sect)
           ForEach(sect.langs.filter({
@@ -99,7 +99,9 @@ struct VoiceOverLangSelector: View {
               }
             }) {
               HStack {
-                Text(lang.localizedTitle).frame(maxWidth: .infinity, alignment: .leading)
+                Text(lang.localizedTitle)
+                  .multilineTextAlignment(.leading)
+                  .frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "checkmark")
                   .tint(.accentColor)
                   .opacity(selectedLangs.contains(lang.universalId) ? 1 : 0)

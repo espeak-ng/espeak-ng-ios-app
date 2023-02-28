@@ -31,8 +31,8 @@ let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 22050, c
 fileprivate let log = Logger(subsystem: "espeak-ng", category: "ui")
 
 struct VoiceSelector: View {
-  let langs: [(id: String, name: String)]
-  let voices: [(id: String, name: String)]
+  let langs: [(id: String, name: LocalizedStringKey)]
+  let voices: [(id: String, name: LocalizedStringKey)]
 
   @Binding var selectedLang: String
   @Binding var selectedVoice: String
@@ -98,7 +98,7 @@ struct ParameterSlider: View {
   #endif
   var body: some View {
     VStack(spacing: 4) {
-      Text("\(parameter.displayName): \(Int32(value))")
+      Text(String(localized: .init(parameter.displayName)) + ": \(Int32(value))")
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityHidden(true)
       Slider(
@@ -111,7 +111,7 @@ struct ParameterSlider: View {
         label: {}
       )
       .accessibilityElement(children: .contain)
-      .accessibilityLabel(Text(parameter.displayName))
+      .accessibilityLabel(Text(LocalizedStringKey(parameter.displayName)))
       .accessibilityHint("\(Int32(parameter.minValue)) to \(Int32(parameter.maxValue))")
     }
     .padding(.top, 6)
@@ -126,8 +126,8 @@ struct ParameterSlider: View {
 struct ContentView: View {
   let audioUnit: AVAudioUnit
   let auChannel: AUMessageChannel
-  let langs: [(id: String, name: String)]
-  let voices: [(id: String, name: String)]
+  let langs: [(id: String, name: LocalizedStringKey)]
+  let voices: [(id: String, name: LocalizedStringKey)]
   #if os(iOS)
   let audioSession = AVAudioSession.sharedInstance()
   #endif
@@ -155,8 +155,8 @@ struct ContentView: View {
 
     self.voiceOverLocales = Set(res?["voiceOverLocales"] as? [String] ?? [])
     self.exposedLocales = Set(res?["exposedLocales"] as? [String] ?? [])
-    self.langs = zip(langIds, langNames).map({ (id: $0.0, name: $0.1) })
-    self.voices = zip(voiceIds, voiceNames).map({ (id: $0.0, name: $0.1) })
+    self.langs = zip(langIds, langNames).map({ (id: $0.0, name: .init($0.1)) })
+    self.voices = zip(voiceIds, voiceNames).map({ (id: $0.0, name: .init($0.1)) })
 
     if engine.isRunning { engine.stop() }
     engine.attach(audioUnit)
