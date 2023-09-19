@@ -32,7 +32,14 @@ struct EspeakNgApp: App {
           ProgressView()
           Text("Starting eSpeak engine...")
         }.padding()
-        case .failure(let e): Text("Error loading: \(e.localizedDescription)")
+        case .failure(let e): VStack {
+          Text("Error loading: \(e.localizedDescription)")
+          Button(action: {
+            audioUnit.tryConnect()
+          }, label: {
+            Text("Try again")
+          }).buttonStyle(.bordered)
+        }
         case .success(let au): ContentView(audioUnit: au)
         }
       }

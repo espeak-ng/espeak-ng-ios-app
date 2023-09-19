@@ -19,31 +19,52 @@
 // DEALINGS IN THE SOFTWARE.
 
 import AVFAudio
+import Combine
 
 class ManagedAudioUnit: ObservableObject {
-  @Published var state: Result<AVAudioUnit, Error>?
-  init() {
-    let manager = AVAudioUnitComponentManager.shared()
-    guard let component = manager.components(matching: AudioComponentDescription(
+  @Published private(set) var state: Result<AVAudioUnit, Error>?
+
+  private let manager = AVAudioUnitComponentManager.shared()
+
+  private func connect() async throws -> AVAudioUnit {
+    let components = manager.components(matching: AudioComponentDescription(
       componentType: kAudioUnitType_SpeechSynthesizer,
       componentSubType: 0x6573706B, // espk
       componentManufacturer: 0x4553504B, // ESPK
       componentFlags: AudioComponentFlags([.sandboxSafe,.isV3AudioUnit]).rawValue,
       componentFlagsMask: AudioComponentFlags([.sandboxSafe,.isV3AudioUnit]).rawValue
-    )).first else {
-      self.state = .failure(NSError(domain: "component", code: -1))
-      return
+    ))
+    var err: Error = NSError(domain: NSOSStatusErrorDomain, code: Int(kAudioUnitErr_ExtensionNotFound), userInfo: [:])
+    for c in components {
+      do {
+        return try await AVAudioUnit.instantiate(with: c.audioComponentDescription, options: [.loadOutOfProcess])
+      } catch let e {
+        err = e
+      }
     }
-    AVAudioUnit.instantiate(with: component.audioComponentDescription, options: [.loadOutOfProcess], completionHandler: { unit, error in
-      guard let unit = unit else {
-        DispatchQueue.main.async {
-          self.state = .failure(error ?? NSError(domain: "component", code: -2))
+    throw err
+  }
+  
+  func tryConnect() {
+    state = nil
+    Task {
+      for _ in 0..<5 {
+        do {
+          let unit = try await connect()
+          DispatchQueue.main.async {
+            self.state = .success(unit)
+          }
+          return
+        } catch let e {
+          DispatchQueue.main.async {
+            self.state = .failure(e)
+          }
         }
-        return
       }
-      DispatchQueue.main.async {
-        self.state = .success(unit)
-      }
-    })
+    }
+  }
+
+  init() {
+    tryConnect()
   }
 }
