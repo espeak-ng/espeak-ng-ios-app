@@ -1,4 +1,5 @@
 {
+  "originHash" : "dfe4fa6ce215b0bfda16f3b84249b85c4e3cc3de908ee5477888ee28bdb382b5",
   "pins" : [
     {
       "identity" : "espeak-ng-spm",
@@ -6,9 +7,9 @@
       "location" : "https://github.com/espeak-ng/espeak-ng-spm.git",
       "state" : {
         "branch" : "master",
-        "revision" : "37ee9f8ebcfac7a63615557a28095af2351e2b89"
+        "revision" : "d1a0e917cf23b3f77efa4c9c96549e737cbc0987"
       }
     }
   ],
-  "version" : 2
+  "version" : 3
 }
