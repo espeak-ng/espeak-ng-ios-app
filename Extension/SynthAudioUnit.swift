@@ -137,7 +137,7 @@ class EspeakContainer {
     try range.flatMap({ try espeak_ng_SetParameter(espeakRANGE, $0, 0).check() })
     try ssml_breaks.flatMap({ try espeak_ng_SetParameter(espeakSSML_BREAK_MUL, $0, 0).check() })
   }
-  static private let _single = EspeakContainer()
+  nonisolated(unsafe) static private let _single = EspeakContainer()
   static var single: EspeakContainer {
     if Thread.isMainThread { return _single }
     return DispatchQueue.main.sync { return _single }
@@ -154,7 +154,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
   private var output: [Float32] = []
   private var outputOffset: Int = 0
   private var outputMutex = DispatchSemaphore(value: 1)
-  private static var espeakVoice = ""
+  nonisolated(unsafe) private static var espeakVoice = ""
 
   @objc override init(componentDescription: AudioComponentDescription, options: AudioComponentInstantiationOptions) throws {
     let basicDescription = AudioStreamBasicDescription(
@@ -288,12 +288,12 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
   ) -> AUAudioUnitStatus {
     let unsafeBuffer = UnsafeMutableAudioBufferListPointer(outputAudioBufferList)
     let frames = unsafeBuffer[0].mData!.assumingMemoryBound(to: Float32.self)
-    frames.assign(repeating: 0, count: Int(frameCount))
+    frames.update(repeating: 0, count: Int(frameCount))
 
     self.outputMutex.wait()
     let count = min(self.output.count - self.outputOffset, Int(frameCount))
     self.output.withUnsafeBufferPointer { ptr in
-      frames.assign(from: ptr.baseAddress!.advanced(by: self.outputOffset), count: count)
+      frames.update(from: ptr.baseAddress!.advanced(by: self.outputOffset), count: count)
     }
     outputAudioBufferList.pointee.mBuffers.mDataByteSize = UInt32(count * MemoryLayout<Float32>.size)
 

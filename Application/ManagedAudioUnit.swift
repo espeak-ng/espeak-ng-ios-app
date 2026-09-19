@@ -21,6 +21,7 @@
 import AVFAudio
 import Combine
 
+@MainActor
 class ManagedAudioUnit: ObservableObject {
   @Published private(set) var state: Result<AVAudioUnit, Error>?
 
@@ -51,12 +52,12 @@ class ManagedAudioUnit: ObservableObject {
       for _ in 0..<5 {
         do {
           let unit = try await connect()
-          DispatchQueue.main.async {
+          await MainActor.run {
             self.state = .success(unit)
           }
           return
         } catch let e {
-          DispatchQueue.main.async {
+          await MainActor.run {
             self.state = .failure(e)
           }
         }
