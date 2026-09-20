@@ -49,7 +49,8 @@ class ManagedAudioUnit: ObservableObject {
   func tryConnect() {
     state = nil
     Task {
-      for _ in 0..<5 {
+      var errorCount = 0
+      while errorCount < 5 {
         do {
           let unit = try await connect()
           await MainActor.run {
@@ -57,6 +58,10 @@ class ManagedAudioUnit: ObservableObject {
           }
           return
         } catch let e {
+          if (e as NSError).domain == NSOSStatusErrorDomain, (e as NSError).code == NSXPCConnectionInterrupted || (e as NSError).code == NSXPCConnectionInvalid {
+            continue
+          }
+          errorCount += 1
           await MainActor.run {
             self.state = .failure(e)
           }
