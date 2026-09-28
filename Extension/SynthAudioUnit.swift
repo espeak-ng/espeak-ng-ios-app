@@ -38,18 +38,32 @@ extension espeak_ng_STATUS {
   }
 }
 
+/// eSpeak keeps its synthesis state in process-wide globals and is not thread safe, while this
+/// extension process can host several audio unit instances (VoiceOver, Spoken Content, apps using
+/// AVSpeechSynthesizer) whose requests arrive on different threads. Every libespeak-ng call goes
+/// through this lock.
+fileprivate let espeakLock = NSLock()
+
 fileprivate class SynthHolder {
   var samples: [Int16] = []
   var events: [espeak_EVENT] = []
+  let isCancelled: () -> Bool
+  init(isCancelled: @escaping () -> Bool) {
+    self.isCancelled = isCancelled
+  }
 }
 
 fileprivate func synthCallback(samples: UnsafeMutablePointer<Int16>?, num_samples: Int32, events: UnsafeMutablePointer<espeak_EVENT>?) -> Int32 {
-  let holder = events?.pointee.user_data.assumingMemoryBound(to: SynthHolder.self).pointee
+  let holder = events?.pointee.user_data.map { Unmanaged<SynthHolder>.fromOpaque($0).takeUnretainedValue() }
   let buf = UnsafeBufferPointer(start: samples, count: Int(num_samples))
   holder?.samples.append(contentsOf: buf)
   #if DEBUG
   log.trace("samples: count=\(num_samples, privacy: .public) max=\(buf.reduce(0, { max($0, abs($1)) }), privacy: .public)")
   #endif
+  if holder?.isCancelled() == true {
+    // Superseded or cancelled: stop generating audio nobody will play.
+    return 1
+  }
   var evt = events
   while let e = evt?.pointee, e.type != espeakEVENT_LIST_TERMINATED {
     holder?.events.append(e)
@@ -129,6 +143,7 @@ class EspeakContainer {
       voices = []
     }
   }
+  /// Must be called with `espeakLock` held.
   func setParams() throws {
     try rate.flatMap({ try espeak_ng_SetParameter(espeakRATE, $0, 0).check() })
     try volume.flatMap({ try espeak_ng_SetParameter(espeakVOLUME, $0, 0).check() })
@@ -137,11 +152,9 @@ class EspeakContainer {
     try range.flatMap({ try espeak_ng_SetParameter(espeakRANGE, $0, 0).check() })
     try ssml_breaks.flatMap({ try espeak_ng_SetParameter(espeakSSML_BREAK_MUL, $0, 0).check() })
   }
-  nonisolated(unsafe) static private let _single = EspeakContainer()
-  static var single: EspeakContainer {
-    if Thread.isMainThread { return _single }
-    return DispatchQueue.main.sync { return _single }
-  }
+  // Lazily initialized exactly once (thread safe). Hopping to the main queue here instead can deadlock
+  // when the main thread is itself busy, and delays every speech request.
+  nonisolated(unsafe) static let single = EspeakContainer()
 }
 
 private let emptyVoiceId = "__espeak"
@@ -154,11 +167,17 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
   private var output: [Float32] = []
   private var outputOffset: Int = 0
   private var outputMutex = DispatchSemaphore(value: 1)
+  /// Bumped by every new request and every cancel (guarded by `outputMutex`); a synthesis whose
+  /// generation is no longer current is abandoned and its audio is never handed to the renderer.
+  private var generation = 0
   nonisolated(unsafe) private static var espeakVoice = ""
 
   @objc override init(componentDescription: AudioComponentDescription, options: AudioComponentInstantiationOptions) throws {
+    let container = EspeakContainer.single
+    // Publish the rate eSpeak actually generates at; samples are passed through without resampling.
+    let sampleRate = espeakLock.withLock { espeak_ng_GetSampleRate() }
     let basicDescription = AudioStreamBasicDescription(
-      mSampleRate: 22050.0,
+      mSampleRate: sampleRate > 0 ? Double(sampleRate) : 22050.0,
       mFormatID: kAudioFormatLinearPCM,
       mFormatFlags: kAudioFormatFlagsNativeFloatPacked | kAudioFormatFlagIsNonInterleaved,
       mBytesPerPacket: 4,
@@ -172,8 +191,6 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
     outputBus = try AUAudioUnitBus(format: self.format)
     try super.init(componentDescription: componentDescription, options: options)
     _outputBusses = AUAudioUnitBusArray(audioUnit: self, busType: AUAudioUnitBusType.output, busses: [outputBus])
-
-    let container = EspeakContainer.single
 
     self.parameterTree = .createTree(withChildren: [
       AUParameterTree.createGroup(
@@ -238,6 +255,8 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
       )
     ])
     self.parameterTree?.implementorValueProvider = { param in
+      espeakLock.lock()
+      defer { espeakLock.unlock() }
       switch param.address {
       case EspeakParameter.rate.rawValue: return AUValue(container.rate ?? espeak_GetParameter(espeakRATE, 1))
       case EspeakParameter.volume.rawValue: return AUValue(container.volume ?? espeak_GetParameter(espeakVOLUME, 1))
@@ -291,16 +310,19 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
     frames.update(repeating: 0, count: Int(frameCount))
 
     self.outputMutex.wait()
-    let count = min(self.output.count - self.outputOffset, Int(frameCount))
-    self.output.withUnsafeBufferPointer { ptr in
-      frames.update(from: ptr.baseAddress!.advanced(by: self.outputOffset), count: count)
+    let count = max(0, min(self.output.count - self.outputOffset, Int(frameCount)))
+    if count > 0 {
+      self.output.withUnsafeBufferPointer { ptr in
+        frames.update(from: ptr.baseAddress!.advanced(by: self.outputOffset), count: count)
+      }
     }
-    outputAudioBufferList.pointee.mBuffers.mDataByteSize = UInt32(count * MemoryLayout<Float32>.size)
+    unsafeBuffer[0].mDataByteSize = UInt32(count * MemoryLayout<Float32>.size)
 
     self.outputOffset += count
     if self.outputOffset >= self.output.count {
       actionFlags.pointee = .offlineUnitRenderAction_Complete
-      self.output.removeAll()
+      // Keep the allocation: freeing memory on the real-time render thread can glitch.
+      self.output.removeAll(keepingCapacity: true)
       self.outputOffset = 0
     }
     self.outputMutex.signal()
@@ -328,31 +350,62 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
     }
     let full_voice_id = [lang_id, voice_id == emptyVoiceId ? nil : voice_id].compactMap({ $0 }).joined(separator: "+")
     log.info("synth request: \(full_voice_id, privacy: .public) \(text, privacy: .public)")
+
+    // A new request supersedes whatever this unit was synthesizing or playing. Drop the old audio
+    // now so it can't be played (or consumed) as part of the new request.
+    self.outputMutex.wait()
+    self.generation &+= 1
+    let requestGeneration = self.generation
+    self.output.removeAll(keepingCapacity: true)
+    self.outputOffset = 0
+    self.outputMutex.signal()
+    let isCancelled = { [unowned self] () -> Bool in
+      self.outputMutex.wait()
+      defer { self.outputMutex.signal() }
+      return self.generation != requestGeneration
+    }
+
+    let holder = SynthHolder(isCancelled: isCancelled)
     do {
-      var holder = SynthHolder()
-      try withUnsafeMutablePointer(to: &holder) { ptr in
+      espeakLock.lock()
+      defer { espeakLock.unlock() }
+      // Another request may have replaced this one while we waited for the engine.
+      if isCancelled() { return }
+      try withExtendedLifetime(holder) {
+        let ptr = Unmanaged.passUnretained(holder).toOpaque()
         if Self.espeakVoice != full_voice_id {
+          // Forget the cached voice first so a failed switch is retried next time.
+          Self.espeakVoice = ""
           try espeak_ng_SetVoiceByName(full_voice_id).check()
           Self.espeakVoice = full_voice_id
         }
         try container.setParams()
-        try espeak_ng_Synthesize(text, text.count, 0, POS_CHARACTER, 0, UInt32(espeakSSML | espeakCHARS_UTF8), nil, ptr).check()
+        let status = espeak_ng_Synthesize(text, text.utf8.count + 1, 0, POS_CHARACTER, 0, UInt32(espeakSSML | espeakCHARS_UTF8), nil, ptr)
+        if status == ENS_SPEECH_STOPPED { return }
+        try status.check()
         try espeak_ng_Synchronize().check()
       }
-      let resampled = vDSP.multiply(Float(1.0/32767.0), vDSP.integerToFloatingPoint(holder.samples, floatingPointType: Float.self))
-      self.outputMutex.wait()
-      self.output = resampled
-      self.outputOffset = 0
-      log.info("synth output: \(self.output.count) samples")
-      self.outputMutex.signal()
     } catch let e {
       log.error("synth error: \(e, privacy: .public)")
+      return
     }
+
+    let samples = vDSP.multiply(Float(1.0/32768.0), vDSP.integerToFloatingPoint(holder.samples, floatingPointType: Float.self))
+    self.outputMutex.wait()
+    if self.generation == requestGeneration {
+      self.output = samples
+      self.outputOffset = 0
+      log.info("synth output: \(samples.count) samples")
+    } else {
+      log.info("synth output dropped: request was cancelled or superseded")
+    }
+    self.outputMutex.signal()
   }
 
   public override func cancelSpeechRequest() {
     self.outputMutex.wait()
-    self.output.removeAll()
+    self.generation &+= 1
+    self.output.removeAll(keepingCapacity: true)
     self.outputOffset = 0
     log.info("stop synthesizing")
     self.outputMutex.signal()
