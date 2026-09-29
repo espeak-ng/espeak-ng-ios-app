@@ -312,7 +312,7 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
 
   public override func synthesizeSpeechRequest(_ speechRequest: AVSpeechSynthesisProviderRequest) {
     let container = EspeakContainer.single
-    let text = speechRequest.ssmlRepresentation
+    let text = Self.normalizeProsodyVolume(speechRequest.ssmlRepresentation)
     let voice = speechRequest.voice.identifier
     let parts = voice.split(separator: ".")
     let voice_id = parts.last.flatMap({ String($0) })
@@ -430,3 +430,34 @@ public class SynthAudioUnit: AVSpeechSynthesisProviderAudioUnit {
 
 }
 
+extension SynthAudioUnit {
+  fileprivate static let prosodyTagRegex = try! NSRegularExpression(pattern: #"<prosody\b[^>]*>"#, options: [.caseInsensitive])
+  fileprivate static let volumeAttrRegex = try! NSRegularExpression(pattern: #"(\bvolume\s*=\s*)(["'])([^"']*)\2"#, options: [.caseInsensitive])
+  fileprivate static let decibelRegex = try! NSRegularExpression(pattern: #"^\s*([+-]?)\s*(\d+(?:\.\d*)?|\.\d+|inf(?:inity)?)\s*db\s*$"#, options: [.caseInsensitive])
+
+  /// VoiceOver sends its speech volume as a relative SSML change in decibels, 20·log10(volume):
+  /// `<prosody rate="91.24998%" volume="-26.020601dB">` for 5%, `volume="+0.0dB"` for 100%.
+  /// eSpeak has no notion of dB and reads that as "26 volume units quieter" (out of 100), so 5% sounded
+  /// almost like 100%, and "-inf dB" came out at full volume. Rewrite dB values to the equivalent
+  /// amplitude percentage, which eSpeak applies as a multiplier.
+  static func normalizeProsodyVolume(_ ssml: String) -> String {
+    var result = ssml
+    let tags = prosodyTagRegex.matches(in: ssml, range: NSRange(ssml.startIndex..., in: ssml))
+    for tag in tags.reversed() {
+      guard let tagRange = Range(tag.range, in: result) else { continue }
+      let tagText = String(result[tagRange])
+      let ns = tagText as NSString
+      guard let attr = volumeAttrRegex.firstMatch(in: tagText, range: NSRange(location: 0, length: ns.length)) else { continue }
+      let value = ns.substring(with: attr.range(at: 3))
+      let vns = value as NSString
+      guard let db = decibelRegex.firstMatch(in: value, range: NSRange(location: 0, length: vns.length)) else { continue }
+      let magnitude = vns.substring(with: db.range(at: 2)).lowercased()
+      let sign: Double = vns.substring(with: db.range(at: 1)) == "-" ? -1 : 1
+      let decibels = magnitude.hasPrefix("inf") ? sign * .infinity : sign * (Double(magnitude) ?? 0)
+      let percent = min(max(100 * pow(10, decibels / 20), 0), 200)
+      let replaced = ns.replacingCharacters(in: attr.range(at: 3), with: String(format: "%.1f%%", percent))
+      result.replaceSubrange(tagRange, with: replaced)
+    }
+    return result
+  }
+}
